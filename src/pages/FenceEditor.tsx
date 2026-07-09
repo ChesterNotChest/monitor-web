@@ -17,7 +17,7 @@ export default function FenceEditor() {
         background:'var(--bg-surface)',borderRadius:'var(--radius-md)',border:'1px solid rgba(255,255,255,.06)',position:'relative',overflow:'hidden'}}>
         <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'var(--space-3)',color:'var(--text-disabled)'}}>
           <Camera size={80}/>
-          <div style={{fontSize:48,fontWeight:'var(--font-bold)',color:'var(--text-secondary)'}}>实时雷霆监控画面</div>
+          <div style={{fontSize:48,fontWeight:'var(--font-bold)',color:'var(--text-secondary)'}}>实时监控画面</div>
           <div style={{fontSize:'var(--text-xl)',color:'var(--text-secondary)'}}>（点了编辑后允许点击画框）</div>
         </div>
         <div style={{padding:'var(--space-4)',textAlign:'center',fontSize:'var(--text-sm)',color:'var(--text-disabled)'}}>

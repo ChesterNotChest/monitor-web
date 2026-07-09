@@ -1,25 +1,36 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { Camera } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { mockAlerts } from '../data/mock';
 
+const sevLabel: Record<string,string> = { danger:'高危',warning:'中危',caution:'低危' };
+
 export default function EventReplay() {
   const { eventId } = useParams<{ eventId: string }>();
-  const navigate = useNavigate();
-  const alert = mockAlerts.find(a=>a.id===eventId) || mockAlerts[0];
-  const sevLabel: Record<string,string> = { danger:'高危',warning:'中危',caution:'低危' };
+  const alert = mockAlerts.find(a=>a.id===eventId);
+
+  if (!alert) {
+    return (
+      <div style={{padding:'var(--space-8)',textAlign:'center',color:'var(--text-disabled)'}}>
+        未找到该告警事件
+      </div>
+    );
+  }
 
   return (
     <div style={{display:'flex',height:'100%',gap:'var(--space-4)',padding:'var(--space-4)'}}>
-      {/* Replay video */}
       <div style={{flex:1,display:'flex',flexDirection:'column',
         background:'var(--bg-surface)',borderRadius:'var(--radius-md)',border:'1px solid rgba(255,255,255,.06)',overflow:'hidden',position:'relative'}}>
-        <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <Camera size={80} style={{color:'var(--text-disabled)'}}/>
-          <span style={{fontSize:40,fontWeight:'var(--font-bold)',color:'var(--text-secondary)',marginLeft:'var(--space-4)'}}>事件的雷霆回放画面</span>
+        <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'var(--space-3)',color:'var(--text-disabled)'}}>
+          <Camera size={80}/>
+          <div style={{fontSize:28,fontWeight:'var(--font-bold)',color:'var(--text-secondary)'}}>
+            {alert.cameraView} · 事件回放
+          </div>
+          <div style={{fontSize:'var(--text-lg)',color:'var(--text-disabled)'}}>
+            告警：{alert.title}
+          </div>
         </div>
-        {/* Progress bar */}
         <div style={{padding:'var(--space-4) var(--space-6)'}}>
           <div style={{position:'relative',height:6,background:'var(--bg-elevated)',borderRadius:3}}>
             <div style={{position:'absolute',left:0,top:0,height:6,width:'25%',background:'var(--color-info)',borderRadius:3}}/>
@@ -31,11 +42,10 @@ export default function EventReplay() {
         </div>
       </div>
 
-      {/* Event detail panel */}
       <div style={{width:360,flexShrink:0,display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
         <div style={{background:'var(--bg-surface)',borderRadius:'var(--radius-md)',padding:'var(--space-4)',border:'1px solid rgba(255,255,255,.06)'}}>
           <div style={{padding:'var(--space-4)',background:'var(--color-warning-dim)',borderRadius:'var(--radius-md)',marginBottom:'var(--space-4)',textAlign:'center'}}>
-            <div style={{fontSize:'var(--text-xl)',fontWeight:'var(--font-bold)',color:'var(--color-info)'}}>{alert.title} 雷霆事件</div>
+            <div style={{fontSize:'var(--text-xl)',fontWeight:'var(--font-bold)',color:'var(--color-info)'}}>{alert.title}</div>
           </div>
           <div style={{display:'flex',flexDirection:'column',gap:'var(--space-3)',fontSize:'var(--text-base)',color:'var(--text-secondary)'}}>
             <div>告警级别：<Badge level={alert.severity}>{sevLabel[alert.severity]}</Badge></div>
@@ -46,7 +56,7 @@ export default function EventReplay() {
         </div>
 
         <div style={{display:'flex',gap:'var(--space-3)'}}>
-          <Button variant="secondary" icon={Camera} size="lg" style={{flex:1}} onClick={()=>navigate(-1)}>设为误报</Button>
+          <Button variant="secondary" size="lg" style={{flex:1}}>设为误报</Button>
           <Button variant="primary" size="lg" style={{flex:1}}>设为已处理</Button>
         </div>
       </div>

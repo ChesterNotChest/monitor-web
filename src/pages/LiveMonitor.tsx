@@ -1,18 +1,19 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Camera } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { mockAlerts } from '../data/mock';
+import { mockAlerts, mockCameras } from '../data/mock';
 
 const sevLabel: Record<string,string> = { danger:'高危',warning:'中危',caution:'低危' };
 
 export default function LiveMonitor() {
+  const { cameraId } = useParams<{ cameraId: string }>();
   const navigate = useNavigate();
-  const alerts = mockAlerts.slice(0,4);
+  const camera = mockCameras.find(c=>c.id===cameraId);
+  const alerts = mockAlerts.filter(a=>a.status==='pending' && a.cameraId===cameraId);
 
   return (
     <div style={{display:'flex',height:'100%',gap:'var(--space-4)',padding:'var(--space-4)'}}>
-      {/* Video placeholder */}
       <div className="camera-feed-view" style={{flex:1,display:'flex',flexDirection:'column',
         background:'var(--bg-surface)',borderRadius:'var(--radius-md)',border:'1px solid rgba(255,255,255,.06)',position:'relative',overflow:'hidden'}}>
         <div style={{position:'absolute',top:'var(--space-4)',left:'var(--space-4)',
@@ -22,15 +23,21 @@ export default function LiveMonitor() {
         </div>
         <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'var(--space-4)',color:'var(--text-disabled)'}}>
           <Camera size={80}/>
-          <div style={{fontSize:48,fontWeight:'var(--font-bold)',color:'var(--text-secondary)'}}>实时雷霆监控画面</div>
+          <div style={{fontSize:28,fontWeight:'var(--font-bold)',color:'var(--text-secondary)'}}>
+            {camera?.name || `视图 ${cameraId}`}
+          </div>
         </div>
       </div>
 
-      {/* Right sidebar */}
       <div style={{width:360,flexShrink:0,display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
         <div style={{flex:1,background:'var(--bg-surface)',borderRadius:'var(--radius-md)',
           padding:'var(--space-4)',border:'1px solid rgba(255,255,255,.06)',overflowY:'auto',display:'flex',flexDirection:'column',gap:'var(--space-3)'}}>
-          <div style={{fontSize:'var(--text-lg)',fontWeight:'var(--font-semibold)',paddingBottom:'var(--space-2)',borderBottom:'1px solid rgba(255,255,255,.06)'}}>告警列表</div>
+          <div style={{fontSize:'var(--text-lg)',fontWeight:'var(--font-semibold)',paddingBottom:'var(--space-2)',borderBottom:'1px solid rgba(255,255,255,.06)'}}>
+            本视图告警 ({alerts.length})
+          </div>
+          {alerts.length===0 && (
+            <div style={{color:'var(--text-disabled)',textAlign:'center',padding:'var(--space-8)'}}>当前视图无未处理告警</div>
+          )}
           {alerts.map(a=>(
             <div key={a.id} style={{display:'flex',alignItems:'center',gap:'var(--space-3)',
               padding:'var(--space-3)',borderRadius:'var(--radius-sm)',background:'var(--bg-canvas)',
@@ -45,11 +52,10 @@ export default function LiveMonitor() {
           ))}
         </div>
 
-        {/* Action bar */}
         <div style={{background:'var(--bg-surface)',borderRadius:'var(--radius-md)',padding:'var(--space-4)',border:'1px solid rgba(255,255,255,.06)'}}>
           <div style={{fontSize:'var(--text-sm)',color:'var(--text-secondary)',marginBottom:'var(--space-3)'}}>固定可用操作</div>
           <div style={{display:'flex',gap:'var(--space-3)'}}>
-            <Button variant="secondary" onClick={()=>navigate('/view/default/edit')}>编辑电子围栏</Button>
+            <Button variant="secondary" onClick={()=>navigate(`/view/${cameraId}/edit`)}>编辑电子围栏</Button>
             <Button variant="primary">手动录制</Button>
           </div>
         </div>
