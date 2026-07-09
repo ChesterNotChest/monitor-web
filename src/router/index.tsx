@@ -40,6 +40,7 @@ export const router = createBrowserRouter([
       { path: '/view', element: <Navigate to="/main" replace /> },
       { path: '/view/:cameraId', element: <LazyPage Component={LiveMonitor} /> },
       { path: '/view/:viewId/edit', element: <LazyPage Component={FenceEditor} /> },
+      { path: '/replay', element: <Navigate to="/main" replace /> },
       { path: '/replay/:eventId', element: <LazyPage Component={EventReplay} /> },
       { path: '/log', element: <LazyPage Component={LogCenter} /> },
       { path: '/report', element: <Navigate to="/log" replace /> },

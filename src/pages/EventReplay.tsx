@@ -1,22 +1,41 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Camera } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { mockAlerts } from '../data/mock';
+import { useAlerts } from '../context/AlertContext';
 
 const sevLabel: Record<string,string> = { danger:'高危',warning:'中危',caution:'低危' };
 
 export default function EventReplay() {
   const { eventId } = useParams<{ eventId: string }>();
-  const alert = mockAlerts.find(a=>a.id===eventId);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { alerts, updateAlert } = useAlerts();
+  const alert = alerts.find(a=>a.id===eventId);
+  const st = (location.state as any) || {};
+  const from = st.from || '';
+  const reportStatus = st.reportStatus as string|undefined;
 
   if (!alert) {
-    return (
-      <div style={{padding:'var(--space-8)',textAlign:'center',color:'var(--text-disabled)'}}>
-        未找到该告警事件
-      </div>
-    );
+    return <div style={{padding:'var(--space-8)',textAlign:'center',color:'var(--text-disabled)'}}>未找到该告警事件</div>;
   }
+
+  const displayStatus = reportStatus
+    ? (reportStatus==='已处理'?'resolved':reportStatus==='标记误报'?'false-alarm':'pending')
+    : alert.status;
+  const isFromReport = from.startsWith('/report') || from.startsWith('/weekly-report');
+  const isResolved = displayStatus==='resolved' || displayStatus==='false-alarm';
+
+  const handleMark = (status: 'resolved' | 'false-alarm') => {
+    updateAlert(alert.id, { status });
+  };
+
+  const statusText: Record<string,string> = { pending:'未处理',resolved:'已处理','false-alarm':'标记误报' };
+
+  const goBack = () => {
+    if (from) navigate(from);
+    else navigate('/main');
+  };
 
   return (
     <div style={{display:'flex',height:'100%',gap:'var(--space-4)',padding:'var(--space-4)'}}>
@@ -51,14 +70,32 @@ export default function EventReplay() {
             <div>告警级别：<Badge level={alert.severity}>{sevLabel[alert.severity]}</Badge></div>
             <div>告警类型：<span style={{color:'var(--text-primary)'}}>{alert.type}</span></div>
             <div>发生时间：<span style={{color:'var(--text-primary)',fontFamily:'var(--font-mono)'}}>{alert.timestamp}</span></div>
-            <div>关联视图：<span style={{color:'var(--text-primary)'}}>{alert.cameraView}</span></div>
+            <div>关联视图：<span style={{color:'var(--text-primary)',cursor:'pointer'}} onClick={()=>navigate(`/view/${alert.cameraId}`,{state:{from:`/replay/${alert.id}`}})}>{alert.cameraView}</span></div>
+            {/* Status display - always visible */}
+            <div style={{marginTop:'var(--space-2)',padding:'var(--space-3)',background:'var(--bg-canvas)',borderRadius:'var(--radius-sm)',
+              display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <span style={{color:'var(--text-secondary)'}}>处理状态</span>
+              <Badge level={isResolved?(displayStatus==='false-alarm'?'caution':'success'):'danger'}>{statusText[displayStatus]}</Badge>
+            </div>
           </div>
         </div>
 
-        <div style={{display:'flex',gap:'var(--space-3)'}}>
-          <Button variant="secondary" size="lg" style={{flex:1}}>设为误报</Button>
-          <Button variant="primary" size="lg" style={{flex:1}}>设为已处理</Button>
-        </div>
+        {/* Buttons: show action buttons from monitor, status only from reports */}
+        {!isFromReport && !isResolved && (
+          <div style={{display:'flex',gap:'var(--space-3)'}}>
+            <Button variant="secondary" size="lg" style={{flex:1}} onClick={()=>handleMark('false-alarm')}>设为误报</Button>
+            <Button variant="primary" size="lg" style={{flex:1}} onClick={()=>handleMark('resolved')}>设为已处理</Button>
+          </div>
+        )}
+        {!isFromReport && isResolved && (
+          <div style={{textAlign:'center',padding:'var(--space-3)',background:'var(--bg-surface)',borderRadius:'var(--radius-md)',
+            color:displayStatus==='false-alarm'?'var(--color-caution)':'var(--color-success)',fontWeight:'var(--font-medium)'}}>
+            此告警已{statusText[displayStatus]}
+          </div>
+        )}
+        {(from && !isFromReport) && (
+          <Button variant="ghost" size="sm" style={{width:'100%'}} onClick={goBack}>返回</Button>
+        )}
       </div>
     </div>
   );

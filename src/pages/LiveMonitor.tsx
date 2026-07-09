@@ -1,16 +1,20 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Camera } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { mockAlerts, mockCameras } from '../data/mock';
+import { useAlerts } from '../context/AlertContext';
+import { mockCameras } from '../data/mock';
 
 const sevLabel: Record<string,string> = { danger:'高危',warning:'中危',caution:'低危' };
 
 export default function LiveMonitor() {
   const { cameraId } = useParams<{ cameraId: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
+  const { alerts } = useAlerts();
   const camera = mockCameras.find(c=>c.id===cameraId);
-  const alerts = mockAlerts.filter(a=>a.status==='pending' && a.cameraId===cameraId);
+  const viewAlerts = alerts.filter(a=>a.status==='pending' && a.cameraId===cameraId);
+  const from = (location.state as any)?.from || '/main';
 
   return (
     <div style={{display:'flex',height:'100%',gap:'var(--space-4)',padding:'var(--space-4)'}}>
@@ -33,12 +37,12 @@ export default function LiveMonitor() {
         <div style={{flex:1,background:'var(--bg-surface)',borderRadius:'var(--radius-md)',
           padding:'var(--space-4)',border:'1px solid rgba(255,255,255,.06)',overflowY:'auto',display:'flex',flexDirection:'column',gap:'var(--space-3)'}}>
           <div style={{fontSize:'var(--text-lg)',fontWeight:'var(--font-semibold)',paddingBottom:'var(--space-2)',borderBottom:'1px solid rgba(255,255,255,.06)'}}>
-            本视图告警 ({alerts.length})
+            本视图告警 ({viewAlerts.length})
           </div>
-          {alerts.length===0 && (
+          {viewAlerts.length===0 && (
             <div style={{color:'var(--text-disabled)',textAlign:'center',padding:'var(--space-8)'}}>当前视图无未处理告警</div>
           )}
-          {alerts.map(a=>(
+          {viewAlerts.map(a=>(
             <div key={a.id} style={{display:'flex',alignItems:'center',gap:'var(--space-3)',
               padding:'var(--space-3)',borderRadius:'var(--radius-sm)',background:'var(--bg-canvas)',
               borderLeft:`3px solid var(--color-${a.severity})`}}>
@@ -47,7 +51,7 @@ export default function LiveMonitor() {
                 <div style={{fontSize:'var(--text-xs)',color:'var(--text-secondary)',marginTop:2}}>{a.timestamp}</div>
               </div>
               <Badge level={a.severity}>{sevLabel[a.severity]}</Badge>
-              <Button variant="danger" size="sm" onClick={()=>navigate(`/replay/${a.id}`)}>查看回放</Button>
+              <Button variant="danger" size="sm" onClick={()=>navigate(`/replay/${a.id}`,{state:{from:location.pathname}})}>查看回放</Button>
             </div>
           ))}
         </div>
@@ -55,7 +59,7 @@ export default function LiveMonitor() {
         <div style={{background:'var(--bg-surface)',borderRadius:'var(--radius-md)',padding:'var(--space-4)',border:'1px solid rgba(255,255,255,.06)'}}>
           <div style={{fontSize:'var(--text-sm)',color:'var(--text-secondary)',marginBottom:'var(--space-3)'}}>固定可用操作</div>
           <div style={{display:'flex',gap:'var(--space-3)'}}>
-            <Button variant="secondary" onClick={()=>navigate(`/view/${cameraId}/edit`)}>编辑电子围栏</Button>
+            <Button variant="secondary" onClick={()=>navigate(`/view/${cameraId}/edit`,{state:{from:location.pathname}})}>编辑电子围栏</Button>
             <Button variant="primary">手动录制</Button>
           </div>
         </div>
