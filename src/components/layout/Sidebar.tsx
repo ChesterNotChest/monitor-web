@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, ScrollText, Users, UserSquare, Monitor, AlertTriangle, ChevronLeft, ChevronRight, Zap } from 'lucide-react';
-import { pendingAlertCount } from '../../data/mock';
+import { useAlerts } from '../../context/AlertContext';
 
 interface NavItem { path: string; label: string; icon: typeof LayoutDashboard; badge?: number; }
 
-const navItems: NavItem[] = [
-  { path:'/main',label:'主面板',icon:LayoutDashboard,badge:pendingAlertCount },
+const baseItems: NavItem[] = [
+  { path:'/main',label:'主面板',icon:LayoutDashboard },
   { path:'/log',label:'日志',icon:ScrollText },
   { path:'/users',label:'用户管理',icon:Users },
   { path:'/characters',label:'人物管理',icon:UserSquare },
@@ -16,8 +16,15 @@ const navItems: NavItem[] = [
 
 export function Sidebar() {
   const navigate = useNavigate(); const location = useLocation();
+  const { alerts } = useAlerts();
+  const pendingCount = alerts.filter(a=>a.status==='pending').length;
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed')==='true');
   useEffect(() => { localStorage.setItem('sidebar-collapsed',String(collapsed)); },[collapsed]);
+
+  const navItems = baseItems.map(item => ({
+    ...item,
+    badge: item.path==='/main' ? pendingCount : undefined,
+  }));
 
   const isActive = (path: string) => {
     if (path==='/main') return location.pathname==='/main' || location.pathname==='/';

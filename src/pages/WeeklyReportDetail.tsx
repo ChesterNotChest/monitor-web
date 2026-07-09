@@ -64,7 +64,7 @@ export default function WeeklyReportDetail() {
                 <td style={{...tdStyle,color:statusColor[row.status]||'var(--color-success)',fontWeight:'var(--font-medium)'}}>{row.status}</td>
                 <td style={{padding:'var(--space-3) var(--space-4)',textAlign:'center'}}>
                   <span style={{color:'var(--color-info)',cursor:'pointer',fontSize:'var(--text-base)'}}
-                    onClick={()=>navigate(`/replay/${row.eventId}`)}>查看详情</span>
+                    onClick={()=>navigate(`/replay/${row.eventId}`,{state:{from:`/weekly-report/${weekNum}`,reportStatus:row.status}})}>查看详情</span>
                 </td>
               </tr>
             ))}
