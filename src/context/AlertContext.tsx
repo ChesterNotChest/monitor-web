@@ -1,22 +1,37 @@
 import { createContext, useContext, useState, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { mockAlerts as initialAlerts, type Alert } from '../data/mock';
+import type { AlertResponse } from '../api/types';
 
 interface AlertCtx {
-  alerts: Alert[];
-  updateAlert: (id: string, updates: Partial<Alert>) => void;
+  alerts: AlertResponse[];
+  markHandled: (id: number) => void;
+  markFalseAlarm: (id: number) => void;
 }
 
-const Ctx = createContext<AlertCtx>({ alerts: [], updateAlert: () => {} });
+const Ctx = createContext<AlertCtx>({
+  alerts: [],
+  markHandled: () => {},
+  markFalseAlarm: () => {},
+});
 
 export function AlertProvider({ children }: { children: ReactNode }) {
-  const [alerts, setAlerts] = useState<Alert[]>(initialAlerts);
+  const [alerts, setAlerts] = useState<AlertResponse[]>([]);
 
-  const updateAlert = useCallback((id: string, updates: Partial<Alert>) => {
-    setAlerts(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+  const markHandled = useCallback((id: number) => {
+    // TODO: 替换为 api/client.ts 的 markAlertHandled(id)
+    setAlerts(prev => prev.filter(a => a.id !== id));
   }, []);
 
-  return <Ctx.Provider value={{ alerts, updateAlert }}>{children}</Ctx.Provider>;
+  const markFalseAlarm = useCallback((id: number) => {
+    // TODO: 替换为 api/client.ts 的 markAlertFalseAlarm(id)
+    setAlerts(prev => prev.filter(a => a.id !== id));
+  }, []);
+
+  return (
+    <Ctx.Provider value={{ alerts, markHandled, markFalseAlarm }}>
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function useAlerts() {
