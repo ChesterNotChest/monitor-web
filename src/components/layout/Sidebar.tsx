@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ScrollText, Users, UserSquare, Monitor, AlertTriangle, ChevronLeft, ChevronRight, Zap, LogOut, UserCog, Key } from 'lucide-react';
+import { LayoutDashboard, ScrollText, Users, UserSquare, Monitor, AlertTriangle, ChevronLeft, ChevronRight, Zap, LogOut, Key } from 'lucide-react';
 import { useAlerts } from '../../context/AlertContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -18,34 +18,13 @@ const baseItems: NavItem[] = [
 export function Sidebar() {
   const navigate = useNavigate(); const location = useLocation();
   const { alerts } = useAlerts();
-  const { user, users, logout, switchUser } = useAuth();
-  const pendingCount = alerts.filter(a=>a.status==='pending').length;
+  const { user, logout } = useAuth();
+  const pendingCount = alerts.length;
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed')==='true');
   const [userMenu, setUserMenu] = useState(false);
-  const [switchTarget, setSwitchTarget] = useState<string|null>(null);
-  const [switchPwd, setSwitchPwd] = useState('');
-  const [switchError, setSwitchError] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => { localStorage.setItem('sidebar-collapsed',String(collapsed)); },[collapsed]);
   useEffect(()=>{const h=(e:MouseEvent)=>{if(menuRef.current&&!menuRef.current.contains(e.target as Node))setUserMenu(false)};document.addEventListener('mousedown',h);return ()=>document.removeEventListener('mousedown',h)},[]);
-
-  const handleSwitchClick = (userId: string) => {
-    setSwitchTarget(userId);
-    setSwitchPwd('');
-    setSwitchError('');
-  };
-
-  const confirmSwitch = () => {
-    if (!switchTarget || !switchPwd) {
-      setSwitchError('请输入密码');
-      return;
-    }
-    switchUser(switchTarget);
-    setSwitchTarget(null);
-    setSwitchPwd('');
-    setSwitchError('');
-    setUserMenu(false);
-  };
 
   // Password change
   const [showChangePwd, setShowChangePwd] = useState(false);
@@ -93,7 +72,7 @@ export function Sidebar() {
       <div style={{ display:'flex',alignItems:'center',gap:'var(--space-3)',
         padding:'var(--space-5) var(--space-4)',borderBottom:'1px solid rgba(255,255,255,.06)',minHeight:64 }}>
         <Zap size={24} style={{flexShrink:0,color:'var(--color-info)'}} />
-        {!collapsed && <span style={{fontSize:'var(--text-lg)',fontWeight:'var(--font-bold)',color:'var(--text-primary)',whiteSpace:'nowrap'}}>监控</span>}
+        <span style={{fontSize:'var(--text-lg)',fontWeight:'var(--font-bold)',color:'var(--text-primary)',whiteSpace:'nowrap',display:collapsed?'none':undefined}}>监控</span>
       </div>
       <div style={{flex:1,overflowY:'auto',padding:'var(--space-2) 0'}}>
         {navItems.map(item => {
@@ -109,17 +88,15 @@ export function Sidebar() {
                 fontSize:'var(--text-base)',transition:'background 120ms ease, color 120ms ease, border-color 120ms ease',
                 textDecoration:'none',whiteSpace:'nowrap',cursor:'pointer',boxSizing:'border-box',textAlign:'left' }}>
               <item.icon size={20} style={{flexShrink:0}} />
-              {!collapsed && (
-                <>
-                  <span style={{flex:1,textAlign:'left'}}>{item.label}</span>
-                  {item.badge && item.badge>0 && (
-                    <span style={{background:'var(--color-danger)',color:'#fff',fontSize:11,fontWeight:'var(--font-bold)',
-                      minWidth:18,height:18,borderRadius:'var(--radius-full)',display:'flex',alignItems:'center',
-                      justifyContent:'center',padding:'0 5px',lineHeight:1}}>{item.badge}
-                    </span>
-                  )}
-                </>
-              )}
+              <span style={{display:collapsed?'none':undefined}}>
+                <span style={{flex:1,textAlign:'left'}}>{item.label}</span>
+                {item.badge && item.badge>0 && (
+                  <span style={{background:'var(--color-danger)',color:'#fff',fontSize:11,fontWeight:'var(--font-bold)',
+                    minWidth:18,height:18,borderRadius:'var(--radius-full)',display:'flex',alignItems:'center',
+                    justifyContent:'center',padding:'0 5px',lineHeight:1}}>{item.badge}
+                  </span>
+                )}
+              </span>
             </button>
           );
         })}
@@ -134,14 +111,12 @@ export function Sidebar() {
               fontSize:'var(--text-sm)',cursor:'pointer'}}>
             <div style={{width:28,height:28,borderRadius:'50%',background:'var(--color-info)',
               display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:'var(--text-xs)',fontWeight:'var(--font-bold)',flexShrink:0}}>
-              {user.name[0]}
+              {user.username[0]}
             </div>
-            {!collapsed && (
-              <>
-                <span style={{flex:1,textAlign:'left'}}>{user.name}</span>
-                <span style={{fontSize:10,color:'var(--text-disabled)'}}>▼</span>
-              </>
-            )}
+            <span style={{display:collapsed?'none':undefined}}>
+              <span style={{flex:1,textAlign:'left'}}>{user.username}</span>
+              <span style={{fontSize:10,color:'var(--text-disabled)'}}>▼</span>
+            </span>
           </button>
 
           {/* Dropdown */}
@@ -150,18 +125,7 @@ export function Sidebar() {
               background:'var(--bg-elevated)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'var(--radius-md)',
               boxShadow:'var(--shadow-lg)',overflow:'hidden',zIndex:100,minWidth:180}}>
               <div style={{padding:'var(--space-3) var(--space-4)',borderBottom:'1px solid rgba(255,255,255,.06)',fontSize:'var(--text-sm)',color:'var(--text-secondary)'}}>
-                当前: {user.name} ({user.role})
-              </div>
-              {/* Switch user */}
-              <div style={{maxHeight:160,overflowY:'auto'}}>
-                {users.filter(u=>u.id!==user.id).map(u=>(
-                  <button key={u.id} onClick={()=>handleSwitchClick(u.id)}
-                    style={{display:'flex',alignItems:'center',gap:'var(--space-2)',width:'100%',padding:'var(--space-2) var(--space-4)',
-                      background:'transparent',border:'none',color:'var(--text-primary)',cursor:'pointer',fontSize:'var(--text-sm)'}}>
-                    <UserCog size={14} style={{color:'var(--text-secondary)'}}/>
-                    {u.name} ({u.role})
-                  </button>
-                ))}
+                当前: {user.username} ({user.role})
               </div>
               {/* Change password */}
               <div style={{borderTop:'1px solid rgba(255,255,255,.06)'}}>
@@ -182,32 +146,6 @@ export function Sidebar() {
             </div>
           )}
         </div>
-      )}
-
-{/* Password prompt for switch */}
-      {switchTarget && (
-        <>
-          <div onClick={()=>setSwitchTarget(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:90}}/>
-          <div style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',zIndex:100,
-            background:'var(--bg-surface)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'var(--radius-lg)',
-            padding:'var(--space-6)',minWidth:320,boxShadow:'var(--shadow-lg)'}}>
-            <div style={{fontSize:'var(--text-lg)',fontWeight:'var(--font-bold)',color:'var(--text-primary)',marginBottom:'var(--space-4)'}}>
-              切换账号验证
-            </div>
-            <div style={{fontSize:'var(--text-sm)',color:'var(--text-secondary)',marginBottom:'var(--space-3)'}}>
-              切换到: {users.find(u=>u.id===switchTarget)?.name}
-            </div>
-            <input type="password" placeholder="请输入密码确认" value={switchPwd}
-              onChange={e=>{setSwitchPwd(e.target.value);setSwitchError('');}}
-              onKeyDown={e=>{if(e.key==='Enter')confirmSwitch();}} autoFocus
-              style={modalInputStyle(switchError)}/>
-            {switchError && <div style={{fontSize:'var(--text-xs)',color:'var(--color-danger)',marginBottom:'var(--space-3)'}}>{switchError}</div>}
-            <div style={{display:'flex',gap:'var(--space-2)'}}>
-              <button onClick={()=>setSwitchTarget(null)} style={btnCancel}>取消</button>
-              <button onClick={confirmSwitch} style={btnConfirm}>确认切换</button>
-            </div>
-          </div>
-        </>
       )}
 
       {/* Password change modal */}
@@ -254,7 +192,7 @@ export function Sidebar() {
             padding:'var(--space-2)',color:'var(--text-secondary)',background:'transparent',
             border:'none',borderRadius:'var(--radius-sm)',fontSize:'var(--text-sm)',cursor:'pointer'}}>
           {collapsed?<ChevronRight size={16}/>:<ChevronLeft size={16}/>}
-          {!collapsed && <span>收起</span>}
+          <span style={{display:collapsed?'none':undefined}}>收起</span>
         </button>
       </div>
     </nav>

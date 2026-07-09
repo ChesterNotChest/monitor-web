@@ -3,24 +3,30 @@ import { Plus, Trash2, Edit3, Image, X, Upload } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Panel } from '../components/ui/Panel';
-import { mockCharacters } from '../data/mock';
-import type { Character } from '../data/mock';
+import { seedPersons } from '../api/seed';
+import type { PersonResponse } from '../api/types';
 
 export default function CharacterManagement() {
-  const [chars, setChars] = useState<Character[]>(mockCharacters);
-  const [photos, setPhotos] = useState<Record<string, string | null>>({});
-  const [selected, setSelected] = useState<string | null>(null);
+  const [chars, setChars] = useState<PersonResponse[]>(seedPersons);
+  const [photos, setPhotos] = useState<Record<number, string | null>>({});
+  const [selected, setSelected] = useState<number | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const char = chars.find(c => c.id === selected);
-  const newId = () => `char-${Date.now()}`;
+  const nextId = () => Math.max(0, ...chars.map(c => c.id)) + 1;
 
   const [addName, setAddName] = useState('');
   const doAdd = () => {
     if (!addName.trim()) return;
-    setChars(prev => [...prev, { id: newId(), name: addName }]);
+    setChars(prev => [...prev, {
+      id: nextId(),
+      name: addName,
+      avatar_path: null,
+      feat_json_id: null,
+      created_at: new Date().toISOString(),
+    }]);
     setShowAdd(false); setAddName('');
   };
 
@@ -50,7 +56,7 @@ export default function CharacterManagement() {
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: 'var(--space-2) var(--space-3)', background: 'var(--bg-canvas)',
     border: '1px solid rgba(255,255,255,.1)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)',
-    fontSize: 'var(--text-base)', outline: 'none', marginBottom: 'var(--space-3)'
+    fontSize: 'var(--text-base)', outline: 'none', marginBottom: 'var(--space-3)',
   };
 
   return (
@@ -80,6 +86,8 @@ export default function CharacterManagement() {
               display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 220, flexDirection: 'column', gap: 'var(--space-3)' }}>
               {photos[char.id] ? (
                 <img src={photos[char.id]} alt={char.name} style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 'var(--radius-md)', objectFit: 'cover' }} />
+              ) : char.avatar_path ? (
+                <img src={char.avatar_path} alt={char.name} style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 'var(--radius-md)', objectFit: 'cover' }} />
               ) : (
                 <span style={{ fontSize: 'var(--text-lg)', color: 'var(--text-disabled)' }}>未设置照片</span>
               )}
@@ -93,7 +101,6 @@ export default function CharacterManagement() {
         )}
       </Panel>
 
-      {/* Add modal */}
       {showAdd && (
         <Modal onClose={() => setShowAdd(false)} title="添加人物">
           <input style={inputStyle} placeholder="人物姓名" value={addName} onChange={e => setAddName(e.target.value)} />
@@ -101,7 +108,6 @@ export default function CharacterManagement() {
         </Modal>
       )}
 
-      {/* Edit modal */}
       {showEdit && (
         <Modal onClose={() => setShowEdit(false)} title="修改信息">
           <input style={inputStyle} placeholder="人物姓名" value={editName} onChange={e => setEditName(e.target.value)} />

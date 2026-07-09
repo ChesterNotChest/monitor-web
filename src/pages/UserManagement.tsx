@@ -3,38 +3,38 @@ import { Plus, Trash2, Edit3, Shield, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Panel } from '../components/ui/Panel';
-import { mockUsers } from '../data/mock';
-import type { User } from '../data/mock';
+import { seedUsers } from '../api/seed';
+import type { UserResponse } from '../api/types';
 
 export default function UserManagement() {
-  const [users, setUsers] = useState<User[]>(mockUsers);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [users, setUsers] = useState<UserResponse[]>(seedUsers);
+  const [selected, setSelected] = useState<number | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
-  const [showPerm, setShowPerm] = useState(false);
+  const [showRole, setShowRole] = useState(false);
 
   const user = users.find(u => u.id === selected);
-  const newId = () => `user-${Date.now()}`;
+  const nextId = () => Math.max(0, ...users.map(u => u.id)) + 1;
 
   // Add
-  const [addForm, setAddForm] = useState({ name: '', role: '安全员', permission: '二级' });
+  const [addForm, setAddForm] = useState({ username: '', role: 'security_guard' });
   const doAdd = () => {
-    if (!addForm.name.trim()) return;
-    const u: User = { id: newId(), name: addForm.name, role: addForm.role, permission: addForm.permission, accountStatus: '正常' };
+    if (!addForm.username.trim()) return;
+    const u: UserResponse = { id: nextId(), username: addForm.username, role: addForm.role, is_active: true };
     setUsers(prev => [...prev, u]);
-    setShowAdd(false); setAddForm({ name: '', role: '安全员', permission: '二级' });
+    setShowAdd(false); setAddForm({ username: '', role: 'security_guard' });
   };
 
   // Edit
-  const [editForm, setEditForm] = useState({ name: '', role: '', permission: '' });
+  const [editForm, setEditForm] = useState({ username: '', role: '' });
   const openEdit = () => {
     if (!user) return;
-    setEditForm({ name: user.name === '张三' ? user.name : user.name, role: user.role, permission: user.permission });
+    setEditForm({ username: user.username, role: user.role });
     setShowEdit(true);
   };
   const doEdit = () => {
     if (!user) return;
-    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, name: editForm.name || u.name, role: editForm.role, permission: editForm.permission } : u));
+    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, username: editForm.username || u.username, role: editForm.role } : u));
     setShowEdit(false);
   };
 
@@ -45,17 +45,21 @@ export default function UserManagement() {
     setSelected(null);
   };
 
-  // Permission
-  const doSetPerm = (perm: string) => {
+  // Role change
+  const doSetRole = (role: string) => {
     if (!user) return;
-    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, permission: perm } : u));
-    setShowPerm(false);
+    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, role } : u));
+    setShowRole(false);
+  };
+
+  const roleLabel: Record<string, string> = {
+    security_guard: '安全员', manager: '管理员', operator: '运维员',
   };
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: 'var(--space-2) var(--space-3)', background: 'var(--bg-canvas)',
     border: '1px solid rgba(255,255,255,.1)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)',
-    fontSize: 'var(--text-base)', outline: 'none', marginBottom: 'var(--space-3)'
+    fontSize: 'var(--text-base)', outline: 'none', marginBottom: 'var(--space-3)',
   };
 
   return (
@@ -69,7 +73,7 @@ export default function UserManagement() {
           {users.map(u => (
             <Card key={u.id} hoverable selected={selected === u.id} onClick={() => setSelected(u.id)}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 140 }}>
-              <span style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--font-semibold)', color: 'var(--text-primary)' }}>{u.name}</span>
+              <span style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--font-semibold)', color: 'var(--text-primary)' }}>{u.username}</span>
             </Card>
           ))}
           {Array.from({ length: Math.max(0, 9 - users.length) }, (_, i) => (
@@ -78,55 +82,47 @@ export default function UserManagement() {
         </div>
       </div>
 
-      {/* Detail panel */}
       <Panel open={!!user} onClose={() => setSelected(null)} title="用户详情">
         {user && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
             <div style={{ background: 'var(--bg-canvas)', borderRadius: 'var(--radius-md)', padding: 'var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-              <div style={{ fontSize: 'var(--text-lg)', color: 'var(--text-secondary)' }}>用户姓名：<span style={{ color: 'var(--text-primary)', fontWeight: 'var(--font-medium)' }}>{user.name === '用户1' ? '张三' : user.name}</span></div>
-              <div style={{ fontSize: 'var(--text-lg)', color: 'var(--text-secondary)' }}>用户角色：<span style={{ color: 'var(--text-primary)', fontWeight: 'var(--font-medium)' }}>{user.role}</span></div>
-              <div style={{ fontSize: 'var(--text-lg)', color: 'var(--text-secondary)' }}>权限等级：<span style={{ color: 'var(--text-primary)', fontWeight: 'var(--font-medium)' }}>{user.permission}</span></div>
-              <div style={{ fontSize: 'var(--text-lg)', color: 'var(--text-secondary)' }}>账号状态：<span style={{ color: 'var(--text-primary)', fontWeight: 'var(--font-medium)' }}>{user.accountStatus}</span></div>
+              <div style={{ fontSize: 'var(--text-lg)', color: 'var(--text-secondary)' }}>用户名：<span style={{ color: 'var(--text-primary)', fontWeight: 'var(--font-medium)' }}>{user.username}</span></div>
+              <div style={{ fontSize: 'var(--text-lg)', color: 'var(--text-secondary)' }}>角色：<span style={{ color: 'var(--text-primary)', fontWeight: 'var(--font-medium)' }}>{roleLabel[user.role] || user.role}</span></div>
+              <div style={{ fontSize: 'var(--text-lg)', color: 'var(--text-secondary)' }}>账号状态：<span style={{ color: user.is_active ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 'var(--font-medium)' }}>{user.is_active ? '正常' : '已停用'}</span></div>
             </div>
             <Button variant="secondary" icon={Edit3} style={{ width: '100%' }} onClick={openEdit}>修改信息</Button>
-            <Button variant="secondary" icon={Shield} style={{ width: '100%' }} onClick={() => setShowPerm(true)}>权限管理</Button>
+            <Button variant="secondary" icon={Shield} style={{ width: '100%' }} onClick={() => setShowRole(true)}>角色管理</Button>
             <Button variant="danger" icon={Trash2} style={{ width: '100%' }} onClick={doDelete}>删除用户</Button>
           </div>
         )}
       </Panel>
 
-      {/* Add modal */}
       {showAdd && (
         <Modal onClose={() => setShowAdd(false)} title="添加用户">
-          <input style={inputStyle} placeholder="用户姓名" value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} />
+          <input style={inputStyle} placeholder="用户名" value={addForm.username} onChange={e => setAddForm(f => ({ ...f, username: e.target.value }))} />
           <select style={inputStyle} value={addForm.role} onChange={e => setAddForm(f => ({ ...f, role: e.target.value }))}>
-            <option>安全员</option><option>管理员</option><option>观察员</option>
-          </select>
-          <select style={inputStyle} value={addForm.permission} onChange={e => setAddForm(f => ({ ...f, permission: e.target.value }))}>
-            <option>一级</option><option>二级</option><option>三级</option>
+            <option value="security_guard">安全员</option><option value="manager">管理员</option><option value="operator">运维员</option>
           </select>
           <Button variant="primary" style={{ width: '100%' }} onClick={doAdd}>确认添加</Button>
         </Modal>
       )}
 
-      {/* Edit modal */}
       {showEdit && (
         <Modal onClose={() => setShowEdit(false)} title="修改信息">
-          <input style={inputStyle} placeholder="用户姓名" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
+          <input style={inputStyle} placeholder="用户名" value={editForm.username} onChange={e => setEditForm(f => ({ ...f, username: e.target.value }))} />
           <select style={inputStyle} value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>
-            <option>安全员</option><option>管理员</option><option>观察员</option>
+            <option value="security_guard">安全员</option><option value="manager">管理员</option><option value="operator">运维员</option>
           </select>
           <Button variant="primary" style={{ width: '100%' }} onClick={doEdit}>保存修改</Button>
         </Modal>
       )}
 
-      {/* Permission modal */}
-      {showPerm && (
-        <Modal onClose={() => setShowPerm(false)} title="权限管理">
-          {['一级', '二级', '三级'].map(p => (
-            <Card key={p} hoverable selected={user?.permission === p} onClick={() => doSetPerm(p)}
+      {showRole && (
+        <Modal onClose={() => setShowRole(false)} title="角色管理">
+          {Object.entries(roleLabel).map(([value, label]) => (
+            <Card key={value} hoverable selected={user?.role === value} onClick={() => doSetRole(value)}
               style={{ marginBottom: 'var(--space-2)', textAlign: 'center', padding: 'var(--space-3)' }}>
-              <span style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--font-medium)' }}>{p}权限</span>
+              <span style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--font-medium)' }}>{label}</span>
             </Card>
           ))}
         </Modal>
@@ -135,7 +131,6 @@ export default function UserManagement() {
   );
 }
 
-// Inline modal component
 function Modal({ onClose, title, children }: { onClose: () => void; title: string; children: React.ReactNode }) {
   return (
     <>

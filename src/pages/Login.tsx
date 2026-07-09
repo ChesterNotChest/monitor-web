@@ -12,10 +12,10 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     setError('');
     if (!username.trim() || !pwd) { setError('请输入账号和密码'); return; }
-    const ok = login(username.trim(), pwd);
+    const ok = await login(username.trim(), pwd);
     if (ok) { navigate('/main',{replace:true}); }
     else { setError('账号或密码错误'); }
   };
@@ -98,7 +98,7 @@ export default function Login() {
 
         {/* Hint */}
         <div style={{marginTop:'var(--space-6)',textAlign:'center',fontSize:'var(--text-xs)',color:'var(--text-disabled)'}}>
-          测试账号: admin / 123 或输入任意用户姓名
+          测试账号: admin / 123
         </div>
       </div>
     </div>

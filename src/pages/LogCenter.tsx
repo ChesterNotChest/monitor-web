@@ -1,73 +1,99 @@
-import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
 import { useAlerts } from '../context/AlertContext';
-import { mockReportDates, mockWeeks } from '../data/mock';
-import type { Alert } from '../data/mock';
 
-// Build log entries from alerts (sorted by time desc, last 6)
-function alertsToLog(alerts: Alert[]) {
-  return [...alerts]
-    .sort((a,b)=>b.timestamp.localeCompare(a.timestamp))
-    .slice(0,6)
-    .map(a=>({
-      time: a.timestamp.slice(11,16), // HH:MM
-      camera: a.cameraView,
-      cameraId: a.cameraId,
-      event: a.title,
-      eventId: a.id,
-      status: a.status as 'pending'|'resolved',
-    }));
+/** 动态生成最近 6 天日期列表 */
+function recentDates(count: number): string[] {
+  const dates: string[] = [];
+  const now = new Date();
+  for (let i = 0; i < count; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    dates.push(d.toISOString().slice(0, 10));
+  }
+  return dates;
+}
+
+/** 动态生成最近 6 周信息 */
+function recentWeeks(count: number): { label: string; range: string; idx: number }[] {
+  const weeks: { label: string; range: string; idx: number }[] = [];
+  const now = new Date();
+  for (let i = 0; i < count; i++) {
+    const start = new Date(now);
+    start.setDate(start.getDate() - start.getDay() + 1 - i * 7);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    const fmt = (d: Date) => `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+    weeks.push({ label: `第${27 - i}周`, range: `${fmt(start)}-${fmt(end)}`, idx: 27 - i });
+  }
+  return weeks;
 }
 
 export default function LogCenter() {
   const navigate = useNavigate();
   const { alerts } = useAlerts();
-  const logEntries = useMemo(()=>alertsToLog(alerts),[alerts]);
+  const reportDates = recentDates(6);
+  const weeks = recentWeeks(6);
+
+  // Log entries from alerts (last 6 by time desc)
+  const logEntries = [...alerts]
+    .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+    .slice(0, 6)
+    .map(a => ({
+      time: a.timestamp.slice(11, 16),
+      viewId: a.view_id,
+      eventId: a.id,
+    }));
 
   const panelStyle: React.CSSProperties = {
-    flex:1,background:'var(--bg-surface)',borderRadius:'var(--radius-md)',padding:'var(--space-4)',
-    border:'1px solid rgba(255,255,255,.06)',overflowY:'auto'
+    flex: 1, background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)',
+    border: '1px solid rgba(255,255,255,.06)', overflowY: 'auto',
   };
   const headerStyle: React.CSSProperties = {
-    textAlign:'center',padding:'var(--space-2) var(--space-4)',marginBottom:'var(--space-3)',
-    background:'var(--bg-elevated)',borderRadius:'var(--radius-sm)',fontSize:'var(--text-xl)',fontWeight:'var(--font-semibold)'
+    textAlign: 'center', padding: 'var(--space-2) var(--space-4)', marginBottom: 'var(--space-3)',
+    background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xl)', fontWeight: 'var(--font-semibold)',
   };
 
   return (
-    <div style={{display:'flex',gap:'var(--space-4)',height:'100%',padding:'var(--space-4)'}}>
+    <div style={{ display: 'flex', gap: 'var(--space-4)', height: '100%', padding: 'var(--space-4)' }}>
       <div style={panelStyle}>
         <div style={headerStyle}>本日日志</div>
-        {logEntries.map((e,i)=>(
-          <div key={i} onClick={()=>navigate(`/replay/${e.eventId}`,{state:{from:'/log'}})}
-            style={{display:'flex',alignItems:'center',gap:'var(--space-3)',cursor:'pointer',
-            padding:'var(--space-3)',borderRadius:'var(--radius-sm)',background:i%2===0?'var(--bg-canvas)':'transparent',
-            borderBottom:'1px solid rgba(255,255,255,.04)'}}>
-            <span style={{fontFamily:'var(--font-mono)',fontSize:'var(--text-base)',color:'var(--text-primary)',width:48,flexShrink:0}}>{e.time}</span>
-            <span style={{fontSize:'var(--text-base)',color:'var(--text-secondary)',width:100,textAlign:'center',flexShrink:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{e.camera}</span>
-            <span style={{flex:1,fontSize:'var(--text-base)',color:'var(--text-primary)'}}>{e.event}</span>
-            <Badge level={e.status==='pending'?'warning':e.status==='false-alarm'?'caution':'success'}>
-              {e.status==='pending'?'未处理':e.status==='false-alarm'?'误报':'已处理'}
-            </Badge>
+        {logEntries.map((e, i) => (
+          <div
+            key={i}
+            onClick={() => navigate(`/replay/${e.eventId}`, { state: { from: '/log' } })}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 'var(--space-3)', cursor: 'pointer',
+              padding: 'var(--space-3)', borderRadius: 'var(--radius-sm)', background: i % 2 === 0 ? 'var(--bg-canvas)' : 'transparent',
+              borderBottom: '1px solid rgba(255,255,255,.04)',
+            }}
+          >
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-base)', color: 'var(--text-primary)', width: 48, flexShrink: 0 }}>{e.time}</span>
+            <span style={{ fontSize: 'var(--text-base)', color: 'var(--text-secondary)', width: 100, textAlign: 'center', flexShrink: 0 }}>视图 {e.viewId}</span>
+            <span style={{ flex: 1, fontSize: 'var(--text-base)', color: 'var(--text-primary)' }}>告警 #{e.eventId}</span>
+            <Badge level="warning">未处理</Badge>
           </div>
         ))}
+        {logEntries.length === 0 && (
+          <div style={{ color: 'var(--text-disabled)', textAlign: 'center', padding: 'var(--space-8)' }}>暂无日志</div>
+        )}
       </div>
 
       <div style={panelStyle}>
         <div style={headerStyle}>日报</div>
-        {mockReportDates.map((d,i)=>(
-          <Card key={d} hoverable onClick={()=>navigate(`/report/${d}`,{state:{from:'/log'}})} style={{marginBottom:'var(--space-2)',textAlign:'center'}}>
-            <span style={{fontSize:'var(--text-lg)',color:'var(--text-primary)'}}>{d}</span>
+        {reportDates.map((d) => (
+          <Card key={d} hoverable onClick={() => navigate(`/report/${d}`, { state: { from: '/log' } })} style={{ marginBottom: 'var(--space-2)', textAlign: 'center' }}>
+            <span style={{ fontSize: 'var(--text-lg)', color: 'var(--text-primary)' }}>{d}</span>
           </Card>
         ))}
       </div>
 
       <div style={panelStyle}>
         <div style={headerStyle}>周报</div>
-        {mockWeeks.map((w,i)=>(
-          <Card key={w.label} hoverable onClick={()=>navigate(`/weekly-report/${27-i}`,{state:{from:'/log'}})} style={{marginBottom:'var(--space-2)',textAlign:'center'}}>
-            <span style={{fontSize:'var(--text-lg)',color:'var(--text-primary)'}}>{w.label}（{w.range}）</span>
+        {weeks.map((w) => (
+          <Card key={w.label} hoverable onClick={() => navigate(`/weekly-report/${w.idx}`, { state: { from: '/log' } })} style={{ marginBottom: 'var(--space-2)', textAlign: 'center' }}>
+            <span style={{ fontSize: 'var(--text-lg)', color: 'var(--text-primary)' }}>{w.label}（{w.range}）</span>
           </Card>
         ))}
       </div>
