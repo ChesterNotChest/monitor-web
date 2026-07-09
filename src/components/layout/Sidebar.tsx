@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ScrollText, Users, UserSquare, Monitor, AlertTriangle, ChevronLeft, ChevronRight, Zap } from 'lucide-react';
+import { LayoutDashboard, ScrollText, Users, UserSquare, Monitor, AlertTriangle, ChevronLeft, ChevronRight, Zap, LogOut, UserCog, Key } from 'lucide-react';
 import { useAlerts } from '../../context/AlertContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface NavItem { path: string; label: string; icon: typeof LayoutDashboard; badge?: number; }
 
@@ -17,9 +18,63 @@ const baseItems: NavItem[] = [
 export function Sidebar() {
   const navigate = useNavigate(); const location = useLocation();
   const { alerts } = useAlerts();
+  const { user, users, logout, switchUser } = useAuth();
   const pendingCount = alerts.filter(a=>a.status==='pending').length;
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed')==='true');
+  const [userMenu, setUserMenu] = useState(false);
+  const [switchTarget, setSwitchTarget] = useState<string|null>(null);
+  const [switchPwd, setSwitchPwd] = useState('');
+  const [switchError, setSwitchError] = useState('');
+  const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => { localStorage.setItem('sidebar-collapsed',String(collapsed)); },[collapsed]);
+  useEffect(()=>{const h=(e:MouseEvent)=>{if(menuRef.current&&!menuRef.current.contains(e.target as Node))setUserMenu(false)};document.addEventListener('mousedown',h);return ()=>document.removeEventListener('mousedown',h)},[]);
+
+  const handleSwitchClick = (userId: string) => {
+    setSwitchTarget(userId);
+    setSwitchPwd('');
+    setSwitchError('');
+  };
+
+  const confirmSwitch = () => {
+    if (!switchTarget || !switchPwd) {
+      setSwitchError('请输入密码');
+      return;
+    }
+    switchUser(switchTarget);
+    setSwitchTarget(null);
+    setSwitchPwd('');
+    setSwitchError('');
+    setUserMenu(false);
+  };
+
+  // Password change
+  const [showChangePwd, setShowChangePwd] = useState(false);
+  const [oldPwd, setOldPwd] = useState('');
+  const [newPwd, setNewPwd] = useState('');
+  const [confirmPwd, setConfirmPwd] = useState('');
+  const [pwdError, setPwdError] = useState('');
+  const [pwdSuccess, setPwdSuccess] = useState('');
+
+  const modalInputStyle = (err: string): React.CSSProperties => ({
+    width:'100%',padding:'10px 14px',background:'var(--bg-canvas)',
+    border:`1px solid ${err?'var(--color-danger)':'rgba(255,255,255,.12)'}`,borderRadius:'var(--radius-md)',
+    color:'var(--text-primary)',fontSize:'var(--text-base)',outline:'none',marginBottom:'var(--space-3)'
+  });
+  const btnCancel: React.CSSProperties = {flex:1,padding:'10px',background:'transparent',
+    border:'1px solid rgba(255,255,255,.12)',borderRadius:'var(--radius-md)',
+    color:'var(--text-secondary)',fontSize:'var(--text-base)',cursor:'pointer'};
+  const btnConfirm: React.CSSProperties = {flex:1,padding:'10px',background:'var(--color-info)',
+    border:'none',borderRadius:'var(--radius-md)',color:'#fff',fontSize:'var(--text-base)',cursor:'pointer'};
+
+  const handleChangePwd = () => {
+    setPwdError(''); setPwdSuccess('');
+    if (!oldPwd) { setPwdError('请输入当前密码'); return; }
+    if (!newPwd) { setPwdError('请输入新密码'); return; }
+    if (newPwd.length<3) { setPwdError('新密码至少3位'); return; }
+    if (newPwd!==confirmPwd) { setPwdError('两次密码不一致'); return; }
+    setPwdSuccess('密码修改成功');
+    setTimeout(()=>{setShowChangePwd(false);setOldPwd('');setNewPwd('');setConfirmPwd('');setPwdSuccess('');},800);
+  };
 
   const navItems = baseItems.map(item => ({
     ...item,
@@ -69,7 +124,131 @@ export function Sidebar() {
           );
         })}
       </div>
-      <div style={{padding:'var(--space-2) var(--space-4)',borderTop:'1px solid rgba(255,255,255,.06)'}}>
+
+      {/* User area */}
+      {user && (
+        <div ref={menuRef} style={{borderTop:'1px solid rgba(255,255,255,.06)',padding:'var(--space-2) var(--space-3)',position:'relative'}}>
+          <button onClick={()=>setUserMenu(o=>!o)}
+            style={{display:'flex',alignItems:'center',gap:'var(--space-2)',width:'100%',padding:'var(--space-2)',
+              color:'var(--text-primary)',background:'transparent',border:'none',borderRadius:'var(--radius-sm)',
+              fontSize:'var(--text-sm)',cursor:'pointer'}}>
+            <div style={{width:28,height:28,borderRadius:'50%',background:'var(--color-info)',
+              display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:'var(--text-xs)',fontWeight:'var(--font-bold)',flexShrink:0}}>
+              {user.name[0]}
+            </div>
+            {!collapsed && (
+              <>
+                <span style={{flex:1,textAlign:'left'}}>{user.name}</span>
+                <span style={{fontSize:10,color:'var(--text-disabled)'}}>▼</span>
+              </>
+            )}
+          </button>
+
+          {/* Dropdown */}
+          {userMenu && (
+            <div style={{position:'absolute',bottom:'100%',left:collapsed?60:0,right:0,marginBottom:4,
+              background:'var(--bg-elevated)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'var(--radius-md)',
+              boxShadow:'var(--shadow-lg)',overflow:'hidden',zIndex:100,minWidth:180}}>
+              <div style={{padding:'var(--space-3) var(--space-4)',borderBottom:'1px solid rgba(255,255,255,.06)',fontSize:'var(--text-sm)',color:'var(--text-secondary)'}}>
+                当前: {user.name} ({user.role})
+              </div>
+              {/* Switch user */}
+              <div style={{maxHeight:160,overflowY:'auto'}}>
+                {users.filter(u=>u.id!==user.id).map(u=>(
+                  <button key={u.id} onClick={()=>handleSwitchClick(u.id)}
+                    style={{display:'flex',alignItems:'center',gap:'var(--space-2)',width:'100%',padding:'var(--space-2) var(--space-4)',
+                      background:'transparent',border:'none',color:'var(--text-primary)',cursor:'pointer',fontSize:'var(--text-sm)'}}>
+                    <UserCog size={14} style={{color:'var(--text-secondary)'}}/>
+                    {u.name} ({u.role})
+                  </button>
+                ))}
+              </div>
+              {/* Change password */}
+              <div style={{borderTop:'1px solid rgba(255,255,255,.06)'}}>
+                <button onClick={()=>{setShowChangePwd(true);setUserMenu(false);}}
+                  style={{display:'flex',alignItems:'center',gap:'var(--space-2)',width:'100%',padding:'var(--space-3) var(--space-4)',
+                    background:'transparent',border:'none',color:'var(--text-primary)',cursor:'pointer',fontSize:'var(--text-sm)'}}>
+                  <Key size={14}/>修改密码
+                </button>
+              </div>
+              {/* Logout */}
+              <div>
+                <button onClick={()=>{logout();navigate('/login',{replace:true});}}
+                  style={{display:'flex',alignItems:'center',gap:'var(--space-2)',width:'100%',padding:'var(--space-3) var(--space-4)',
+                    background:'transparent',border:'none',color:'var(--color-danger)',cursor:'pointer',fontSize:'var(--text-sm)'}}>
+                  <LogOut size={14}/>退出登录
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+{/* Password prompt for switch */}
+      {switchTarget && (
+        <>
+          <div onClick={()=>setSwitchTarget(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:90}}/>
+          <div style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',zIndex:100,
+            background:'var(--bg-surface)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'var(--radius-lg)',
+            padding:'var(--space-6)',minWidth:320,boxShadow:'var(--shadow-lg)'}}>
+            <div style={{fontSize:'var(--text-lg)',fontWeight:'var(--font-bold)',color:'var(--text-primary)',marginBottom:'var(--space-4)'}}>
+              切换账号验证
+            </div>
+            <div style={{fontSize:'var(--text-sm)',color:'var(--text-secondary)',marginBottom:'var(--space-3)'}}>
+              切换到: {users.find(u=>u.id===switchTarget)?.name}
+            </div>
+            <input type="password" placeholder="请输入密码确认" value={switchPwd}
+              onChange={e=>{setSwitchPwd(e.target.value);setSwitchError('');}}
+              onKeyDown={e=>{if(e.key==='Enter')confirmSwitch();}} autoFocus
+              style={modalInputStyle(switchError)}/>
+            {switchError && <div style={{fontSize:'var(--text-xs)',color:'var(--color-danger)',marginBottom:'var(--space-3)'}}>{switchError}</div>}
+            <div style={{display:'flex',gap:'var(--space-2)'}}>
+              <button onClick={()=>setSwitchTarget(null)} style={btnCancel}>取消</button>
+              <button onClick={confirmSwitch} style={btnConfirm}>确认切换</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Password change modal */}
+      {showChangePwd && (
+        <>
+          <div onClick={()=>setShowChangePwd(false)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:90}}/>
+          <div style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',zIndex:100,
+            background:'var(--bg-surface)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'var(--radius-lg)',
+            padding:'var(--space-6)',minWidth:340,boxShadow:'var(--shadow-lg)'}}>
+            <div style={{fontSize:'var(--text-lg)',fontWeight:'var(--font-bold)',color:'var(--text-primary)',marginBottom:'var(--space-4)'}}>
+              修改密码
+            </div>
+            {!pwdSuccess ? (<>
+              <div style={{fontSize:'var(--text-sm)',color:'var(--text-secondary)',marginBottom:'var(--space-1)'}}>当前密码</div>
+              <input type="password" placeholder="输入当前密码" value={oldPwd}
+                onChange={e=>{setOldPwd(e.target.value);setPwdError('');}} autoFocus
+                style={modalInputStyle(pwdError)}/>
+              <div style={{fontSize:'var(--text-sm)',color:'var(--text-secondary)',marginBottom:'var(--space-1)',marginTop:'var(--space-3)'}}>新密码</div>
+              <input type="password" placeholder="输入新密码（至少3位）" value={newPwd}
+                onChange={e=>{setNewPwd(e.target.value);setPwdError('');}}
+                style={modalInputStyle(pwdError)}/>
+              <div style={{fontSize:'var(--text-sm)',color:'var(--text-secondary)',marginBottom:'var(--space-1)',marginTop:'var(--space-3)'}}>确认新密码</div>
+              <input type="password" placeholder="再次输入新密码" value={confirmPwd}
+                onChange={e=>{setConfirmPwd(e.target.value);setPwdError('');}}
+                onKeyDown={e=>{if(e.key==='Enter')handleChangePwd();}}
+                style={modalInputStyle(pwdError)}/>
+              {pwdError && <div style={{fontSize:'var(--text-xs)',color:'var(--color-danger)',marginTop:'var(--space-3)'}}>{pwdError}</div>}
+              <div style={{display:'flex',gap:'var(--space-2)',marginTop:'var(--space-4)'}}>
+                <button onClick={()=>setShowChangePwd(false)} style={btnCancel}>取消</button>
+                <button onClick={handleChangePwd} style={btnConfirm}>确认修改</button>
+              </div>
+            </>) : (
+              <div style={{textAlign:'center',color:'var(--color-success)',fontSize:'var(--text-lg)',fontWeight:'var(--font-medium)',padding:'var(--space-8)'}}>
+                ✓ 密码修改成功
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      <div style={{padding:'var(--space-2) var(--space-4)',borderTop:user?'none':'1px solid rgba(255,255,255,.06)'}}>
         <button onClick={()=>setCollapsed(c=>!c)}
           style={{display:'flex',alignItems:'center',gap:'var(--space-2)',width:'100%',
             padding:'var(--space-2)',color:'var(--text-secondary)',background:'transparent',
