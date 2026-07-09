@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="100%" height="100%">
+  <!-- 页面背景 -->
+  <rect width="1600" height="900" fill="#ffffff" />
+
+  <!-- ========== 左侧：命名人物列表区域 ========== -->
+  <rect x="50" y="40" width="1050" height="820" fill="#a8a8a8" stroke="#888888" stroke-width="2" />
+  <text x="90" y="95" fill="#222222" font-size="28" font-family="Microsoft YaHei, sans-serif">命名人物管理</text>
+
+  <!-- 添加人物按钮 -->
+  <rect x="320" y="60" width="180" height="55" fill="#e0e0e0" stroke="#bbbbbb" stroke-width="1" />
+  <text x="410" y="98" text-anchor="middle" fill="#222222" font-size="24" font-family="Microsoft YaHei, sans-serif">添加人物</text>
+
+  <!-- 人物卡片网格（3列） -->
+  <!-- 第一行 -->
+  <rect x="90" y="140" width="280" height="140" fill="#e0e0e0" stroke="#bbbbbb" stroke-width="1" />
+  <text x="230" y="215" text-anchor="middle" fill="#222222" font-size="26" font-family="Microsoft YaHei, sans-serif">人物名1</text>
+
+  <rect x="400" y="140" width="280" height="140" fill="#e0e0e0" stroke="#bbbbbb" stroke-width="1" />
+  <text x="540" y="215" text-anchor="middle" fill="#222222" font-size="26" font-family="Microsoft YaHei, sans-serif">人物名2</text>
+
+  <rect x="710" y="140" width="280" height="140" fill="#e0e0e0" stroke="#bbbbbb" stroke-width="1" />
+  <text x="850" y="215" text-anchor="middle" fill="#222222" font-size="26" font-family="Microsoft YaHei, sans-serif">人物名3</text>
+
+  <!-- 第二行 -->
+  <rect x="90" y="310" width="280" height="140" fill="#e0e0e0" stroke="#bbbbbb" stroke-width="1" />
+  <text x="230" y="385" text-anchor="middle" fill="#555555" font-size="28" font-family="sans-serif">◦ ◦ ◦</text>
+
+  <rect x="400" y="310" width="280" height="140" fill="#e0e0e0" stroke="#bbbbbb" stroke-width="1" />
+  <rect x="710" y="310" width="280" height="140" fill="#e0e0e0" stroke="#bbbbbb" stroke-width="1" />
+
+  <!-- 第三行 -->
+  <rect x="90" y="480" width="280" height="140" fill="#e0e0e0" stroke="#bbbbbb" stroke-width="1" />
+  <rect x="400" y="480" width="280" height="140" fill="#e0e0e0" stroke="#bbbbbb" stroke-width="1" />
+  <rect x="710" y="480" width="280" height="140" fill="#e0e0e0" stroke="#bbbbbb" stroke-width="1" />
+
+  <!-- ========== 右侧：人物详情与操作栏 ========== -->
+  <rect x="1150" y="40" width="400" height="820" fill="#e0e0e0" stroke="#888888" stroke-width="2" />
+
+  <!-- 人物图片展示区 -->
+  <rect x="1180" y="80" width="340" height="220" fill="#a8a8a8" stroke="#888888" stroke-width="1" />
+  <text x="1350" y="195" text-anchor="middle" fill="#222222" font-size="24" font-family="Microsoft YaHei, sans-serif">选中的人物的图片</text>
+
+  <!-- 人物姓名（图片下方） -->
+  <text x="1350" y="340" text-anchor="middle" fill="#222222" font-size="26" font-family="Microsoft YaHei, sans-serif" font-weight="bold">
+    人物名1
+  </text>
+
+  <!-- 管理操作按钮 -->
+  <rect x="1210" y="400" width="280" height="70" fill="#a8a8a8" stroke="#888888" stroke-width="1" />
+  <text x="1350" y="445" text-anchor="middle" fill="#222222" font-size="24" font-family="Microsoft YaHei, sans-serif">修改信息</text>
+
+  <rect x="1210" y="510" width="280" height="70" fill="#a8a8a8" stroke="#888888" stroke-width="1" />
+  <text x="1350" y="555" text-anchor="middle" fill="#222222" font-size="24" font-family="Microsoft YaHei, sans-serif">更改照片</text>
+
+  <rect x="1210" y="620" width="280" height="70" fill="#a8a8a8" stroke="#888888" stroke-width="1" />
+  <text x="1350" y="665" text-anchor="middle" fill="#222222" font-size="24" font-family="Microsoft YaHei, sans-serif">删除人物</text>
+</svg>

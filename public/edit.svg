@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="100%" height="100%">
+  <!-- 页面背景 -->
+  <rect width="1600" height="900" fill="#ffffff" />
+
+  <!-- ========== 左侧：实时监控画面区域 ========== -->
+  <rect x="50" y="50" width="1050" height="800" fill="#b0b0b0" stroke="#888888" stroke-width="2" />
+  <text x="575" y="420" text-anchor="middle" fill="white" font-size="64" font-family="Microsoft YaHei, sans-serif">
+    实时雷霆监控画面
+  </text>
+  <text x="575" y="510" text-anchor="middle" fill="white" font-size="32" font-family="Microsoft YaHei, sans-serif">
+    （点了编辑后允许点击画框）
+  </text>
+
+  <!-- ========== 右侧：电子围栏编辑侧边栏 ========== -->
+  <rect x="1150" y="50" width="400" height="800" fill="#b0b0b0" stroke="#888888" stroke-width="2" />
+
+  <!-- 电子围栏区域列表 -->
+  <!-- 区域1 -->
+  <rect x="1180" y="80" width="340" height="80" fill="#5a9ed6" stroke="#4a7fb8" stroke-width="1" />
+  <text x="1290" y="132" text-anchor="middle" fill="white" font-size="28" font-family="Microsoft YaHei, sans-serif">区域1</text>
+  <rect x="1420" y="95" width="80" height="50" fill="#b8b8b8" stroke="#999999" stroke-width="1" />
+  <text x="1460" y="128" text-anchor="middle" fill="white" font-size="22" font-family="Microsoft YaHei, sans-serif">编辑</text>
+
+  <!-- 区域2 -->
+  <rect x="1180" y="200" width="340" height="80" fill="#5a9ed6" stroke="#4a7fb8" stroke-width="1" />
+  <text x="1290" y="252" text-anchor="middle" fill="white" font-size="28" font-family="Microsoft YaHei, sans-serif">区域2</text>
+  <rect x="1420" y="215" width="80" height="50" fill="#b8b8b8" stroke="#999999" stroke-width="1" />
+  <text x="1460" y="248" text-anchor="middle" fill="white" font-size="22" font-family="Microsoft YaHei, sans-serif">编辑</text>
+
+  <!-- 编辑操作提示框（点击编辑后显示） -->
+  <rect x="1180" y="480" width="340" height="320" fill="#5a9ed6" stroke="#4a7fb8" stroke-width="1" />
+  <text x="1350" y="540" text-anchor="middle" fill="black" font-size="28" font-family="Microsoft YaHei, sans-serif">
+    请在实时画面点击4点
+  </text>
+  <text x="1350" y="640" text-anchor="middle" fill="white" font-size="26" font-family="Microsoft YaHei, sans-serif">
+    （只在点击了编辑后显示）
+  </text>
+
+  <!-- 底部操作按钮：回退 + 保存 -->
+  <rect x="1220" y="730" width="120" height="55" fill="#000000" stroke="#333333" stroke-width="1" />
+  <text x="1280" y="765" text-anchor="middle" fill="white" font-size="22" font-family="Microsoft YaHei, sans-serif">删除
+  </text>
+
+  <rect x="1360" y="730" width="120" height="55" fill="#000000" stroke="#333333" stroke-width="1" />
+  <text x="1420" y="765" text-anchor="middle" fill="white" font-size="22" font-family="Microsoft YaHei, sans-serif">保存</text>
+</svg>
