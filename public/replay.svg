@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="100%" height="100%">
+  <defs>
+    <!-- 按钮阴影效果 -->
+    <filter id="btnShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="4" stdDeviation="3" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- 页面背景 -->
+  <rect width="1600" height="900" fill="#ffffff" />
+
+  <!-- ========== 左侧：回放视频区域 ========== -->
+  <rect x="50" y="50" width="1050" height="800" fill="#b0b0b0" stroke="#888888" stroke-width="2" />
+  <text x="575" y="450" text-anchor="middle" fill="white" font-size="64" font-family="Microsoft YaHei, sans-serif">
+    事件的雷霆回放画面
+  </text>
+
+  <!-- 回放进度条 -->
+  <rect x="70" y="780" width="1010" height="6" fill="#888888" rx="3" />
+  <rect x="70" y="780" width="360" height="6" fill="#5a9ed6" rx="3" />
+  <circle cx="430" cy="783" r="10" fill="#ffffff" stroke="#5a9ed6" stroke-width="2" />
+  <text x="70" y="812" fill="white" font-size="18" font-family="Microsoft YaHei, sans-serif">00:12</text>
+  <text x="1050" y="812" text-anchor="end" fill="white" font-size="18" font-family="Microsoft YaHei, sans-serif">02:45</text>
+
+  <!-- ========== 右侧：告警信息与操作栏 ========== -->
+  <rect x="1150" y="50" width="400" height="800" fill="#b0b0b0" stroke="#888888" stroke-width="2" />
+
+  <!-- 告警事件标题 -->
+  <rect x="1200" y="80" width="300" height="70" fill="#ffc107" stroke="#cc9a00" stroke-width="1" />
+  <text x="1350" y="125" text-anchor="middle" fill="#0088cc" font-size="28" font-family="Microsoft YaHei, sans-serif">
+    Xxx 雷霆事件
+  </text>
+
+  <!-- 告警详情信息（事件名与按钮中间） -->
+  <text x="1200" y="190" fill="#ffffff" font-size="20" font-family="Microsoft YaHei, sans-serif">
+    告警级别：<tspan fill="#ffffff" font-weight="normal">高危</tspan>
+  </text>
+  <text x="1200" y="230" fill="#ffffff" font-size="20" font-family="Microsoft YaHei, sans-serif">
+    告警类型：<tspan fill="#ffffff" font-weight="normal">危险区域入侵</tspan>
+  </text>
+  <text x="1200" y="270" fill="#ffffff" font-size="20" font-family="Microsoft YaHei, sans-serif">
+    发生时间：<tspan fill="#ffffff" font-weight="normal">2026-07-07 14:23:15</tspan>
+  </text>
+  <text x="1200" y="310" fill="#ffffff" font-size="20" font-family="Microsoft YaHei, sans-serif">
+    关联视图：<tspan fill="#ffffff" font-weight="normal">1号车间监控</tspan>
+  </text>
+
+  <!-- 处理按钮组 -->
+  <!-- 设为误报 -->
+  <rect x="1200" y="360" width="130" height="70" fill="#e67e22" stroke="#c56a1c" stroke-width="1" filter="url(#btnShadow)" />
+  <text x="1265" y="403" text-anchor="middle" fill="white" font-size="22" font-family="Microsoft YaHei, sans-serif">
+    设为误报
+  </text>
+
+  <!-- 设为已处理 -->
+  <rect x="1370" y="360" width="130" height="70" fill="#2e9b3a" stroke="#237a2d" stroke-width="1" filter="url(#btnShadow)" />
+  <text x="1435" y="403" text-anchor="middle" fill="white" font-size="22" font-family="Microsoft YaHei, sans-serif">
+    设为已处理
+  </text>
+</svg>
