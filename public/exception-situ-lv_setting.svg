@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="100%" height="100%">
+  <!-- 页面背景 -->
+  <rect width="1600" height="900" fill="#ffffff" />
+
+  <!-- 整体外框 -->
+  <rect x="50" y="40" width="1500" height="820" fill="#a8a8a8" stroke="#888888" stroke-width="2" />
+  <text x="90" y="90" fill="#222222" font-size="28" font-family="Microsoft YaHei, sans-serif">异常设置</text>
+
+  <!-- ========== 左侧：异常列表卡片区 ========== -->
+  <!-- 第一行 -->
+  <!-- 异常1：开启 高危 -->
+  <rect x="90" y="120" width="280" height="120" fill="#e0e0e0" stroke="#bbbbbb" stroke-width="1" rx="4" />
+  <text x="120" y="160" fill="#222222" font-size="22" font-family="Microsoft YaHei, sans-serif">陌生人识别告警</text>
+  <rect x="120" y="180" width="60" height="28" fill="#dc3545" rx="4" />
+  <text x="150" y="200" text-anchor="middle" fill="white" font-size="16" font-family="Microsoft YaHei, sans-serif">高危</text>
+  <circle cx="340" cy="140" r="8" fill="#2e9b3a" />
+
+  <!-- 异常2：开启 中危（选中态） -->
+  <rect x="400" y="120" width="280" height="120" fill="#e0e0e0" stroke="#5a9ed6" stroke-width="3" rx="4" />
+  <text x="430" y="160" fill="#222222" font-size="22" font-family="Microsoft YaHei, sans-serif">危险区域闯入</text>
+  <rect x="430" y="180" width="60" height="28" fill="#e67e22" rx="4" />
+  <text x="460" y="200" text-anchor="middle" fill="white" font-size="16" font-family="Microsoft YaHei, sans-serif">中危</text>
+  <circle cx="650" cy="140" r="8" fill="#2e9b3a" />
+
+  <!-- 异常3：开启 低危 -->
+  <rect x="710" y="120" width="280" height="120" fill="#e0e0e0" stroke="#bbbbbb" stroke-width="1" rx="4" />
+  <text x="740" y="160" fill="#222222" font-size="22" font-family="Microsoft YaHei, sans-serif">异常停留告警</text>
+  <rect x="740" y="180" width="60" height="28" fill="#ffc107" rx="4" />
+  <text x="770" y="200" text-anchor="middle" fill="#222222" font-size="16" font-family="Microsoft YaHei, sans-serif">低危</text>
+  <circle cx="960" cy="140" r="8" fill="#2e9b3a" />
+
+  <!-- 第二行 -->
+  <!-- 异常4：已关闭 中危 -->
+  <rect x="90" y="270" width="280" height="120" fill="#c8c8c8" stroke="#aaaaaa" stroke-width="1" rx="4" opacity="0.75" />
+  <text x="120" y="310" fill="#666666" font-size="22" font-family="Microsoft YaHei, sans-serif">抽烟行为检测</text>
+  <rect x="120" y="330" width="60" height="28" fill="#e67e22" rx="4" opacity="0.7" />
+  <text x="150" y="350" text-anchor="middle" fill="white" font-size="16" font-family="Microsoft YaHei, sans-serif">中危</text>
+  <circle cx="340" cy="290" r="8" fill="#888888" />
+  <text x="325" y="295" text-anchor="end" fill="#666666" font-size="14" font-family="Microsoft YaHei, sans-serif">已关闭</text>
+
+  <!-- 异常5：开启 高危 -->
+  <rect x="400" y="270" width="280" height="120" fill="#e0e0e0" stroke="#bbbbbb" stroke-width="1" rx="4" />
+  <text x="430" y="310" fill="#222222" font-size="22" font-family="Microsoft YaHei, sans-serif">跌倒行为检测</text>
+  <rect x="430" y="330" width="60" height="28" fill="#dc3545" rx="4" />
+  <text x="460" y="350" text-anchor="middle" fill="white" font-size="16" font-family="Microsoft YaHei, sans-serif">高危</text>
+  <circle cx="650" cy="290" r="8" fill="#2e9b3a" />
+
+  <!-- 异常6：开启 中危 -->
+  <rect x="710" y="270" width="280" height="120" fill="#e0e0e0" stroke="#bbbbbb" stroke-width="1" rx="4" />
+  <text x="740" y="310" fill="#222222" font-size="22" font-family="Microsoft YaHei, sans-serif">打架行为检测</text>
+  <rect x="740" y="330" width="60" height="28" fill="#dc3545" rx="4" />
+  <text x="770" y="350" text-anchor="middle" fill="white" font-size="16" font-family="Microsoft YaHei, sans-serif">高危</text>
+  <circle cx="960" cy="290" r="8" fill="#2e9b3a" />
+
+  <!-- 第三行 -->
+  <!-- 异常7：已关闭 低危 -->
+  <rect x="90" y="420" width="280" height="120" fill="#c8c8c8" stroke="#aaaaaa" stroke-width="1" rx="4" opacity="0.75" />
+  <text x="120" y="460" fill="#666666" font-size="22" font-family="Microsoft YaHei, sans-serif">异常声音检测</text>
+  <rect x="120" y="480" width="60" height="28" fill="#ffc107" rx="4" opacity="0.7" />
+  <text x="150" y="500" text-anchor="middle" fill="#222222" font-size="16" font-family="Microsoft YaHei, sans-serif">低危</text>
+  <circle cx="340" cy="440" r="8" fill="#888888" />
+  <text x="325" y="445" text-anchor="end" fill="#666666" font-size="14" font-family="Microsoft YaHei, sans-serif">已关闭</text>
+
+  <!-- 异常8：开启 低危 -->
+  <rect x="400" y="420" width="280" height="120" fill="#e0e0e0" stroke="#bbbbbb" stroke-width="1" rx="4" />
+  <text x="430" y="460" fill="#222222" font-size="22" font-family="Microsoft YaHei, sans-serif">异常物品检测</text>
+  <rect x="430" y="480" width="60" height="28" fill="#ffc107" rx="4" />
+  <text x="460" y="500" text-anchor="middle" fill="#222222" font-size="16" font-family="Microsoft YaHei, sans-serif">低危</text>
+  <circle cx="650" cy="440" r="8" fill="#2e9b3a" />
+
+  <!-- ========== 右侧：异常详情与操作区 ========== -->
+  <rect x="1120" y="120" width="380" height="720" fill="#e0e0e0" stroke="#bbbbbb" stroke-width="1" rx="4" />
+
+  <!-- 事件组成 -->
+  <text x="1150" y="160" fill="#222222" font-size="24" font-family="Microsoft YaHei, sans-serif" font-weight="bold">事件组成</text>
+  
+  <rect x="1150" y="180" width="320" height="50" fill="#d0d0d0" rx="4" />
+  <text x="1170" y="212" fill="#222222" font-size="18" font-family="Microsoft YaHei, sans-serif">1. 人员进入区域检测</text>
+  
+  <rect x="1150" y="240" width="320" height="50" fill="#d0d0d0" rx="4" />
+  <text x="1170" y="272" fill="#222222" font-size="18" font-family="Microsoft YaHei, sans-serif">2. 边界靠近检测</text>
+  
+  <rect x="1150" y="300" width="320" height="50" fill="#d0d0d0" rx="4" />
+  <text x="1170" y="332" fill="#222222" font-size="18" font-family="Microsoft YaHei, sans-serif">3. 停留超时检测</text>
+
+  <!-- 管理按钮组 -->
+  <rect x="1170" y="400" width="280" height="60" fill="#a8a8a8" stroke="#888888" stroke-width="1" rx="2" />
+  <text x="1310" y="438" text-anchor="middle" fill="#222222" font-size="22" font-family="Microsoft YaHei, sans-serif">添加事件</text>
+
+  <rect x="1170" y="475" width="280" height="60" fill="#a8a8a8" stroke="#888888" stroke-width="1" rx="2" />
+  <text x="1310" y="513" text-anchor="middle" fill="#222222" font-size="22" font-family="Microsoft YaHei, sans-serif">修改事件</text>
+
+  <rect x="1170" y="550" width="280" height="60" fill="#a8a8a8" stroke="#888888" stroke-width="1" rx="2" />
+  <text x="1310" y="588" text-anchor="middle" fill="#222222" font-size="22" font-family="Microsoft YaHei, sans-serif">删除事件</text>
+
+  <rect x="1170" y="625" width="280" height="60" fill="#a8a8a8" stroke="#888888" stroke-width="1" rx="2" />
+  <text x="1310" y="663" text-anchor="middle" fill="#222222" font-size="22" font-family="Microsoft YaHei, sans-serif">设置异常等级</text>
+
+  <rect x="1170" y="700" width="280" height="60" fill="#a8a8a8" stroke="#888888" stroke-width="1" rx="2" />
+  <text x="1310" y="738" text-anchor="middle" fill="#222222" font-size="22" font-family="Microsoft YaHei, sans-serif">异常告警开关</text>
+
+  <rect x="1170" y="775" width="280" height="60" fill="#a8a8a8" stroke="#888888" stroke-width="1" rx="2" />
+  <text x="1310" y="813" text-anchor="middle" fill="#222222" font-size="22" font-family="Microsoft YaHei, sans-serif">删除异常</text>
+</svg>
