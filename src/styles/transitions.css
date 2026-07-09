@@ -1,0 +1,11 @@
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+@keyframes pulse-ring{0%{transform:scale(1);opacity:.6}100%{transform:scale(2.2);opacity:0}}
+.camera-feed-main{view-transition-name:camera-feed}
+.camera-feed-view{view-transition-name:camera-feed}
+::view-transition-old(root){animation:fade-out 150ms ease-in-out both}
+::view-transition-new(root){animation:fade-in 150ms ease-in-out both}
+::view-transition-old(camera-feed){animation:fade-out 100ms ease-out both}
+::view-transition-new(camera-feed){animation:fade-in 300ms cubic-bezier(0.22,1,0.36,1) both}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes fade-out{from{opacity:1}to{opacity:0}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
