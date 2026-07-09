@@ -1,0 +1,279 @@
+/**
+ * Server Pydantic Schema → TypeScript 类型映射。
+ *
+ * 来源：monitor-server/src/schema/http/*.py + schema/wss/node_commands.py
+ * 原则：逐字段翻译，不做"前端友好"改造。
+ *   Python int → TS number
+ *   Python str → TS string
+ *   Python bool → TS boolean
+ *   Python datetime → TS string (ISO 8601)
+ *   Python list[X] → TS X[]
+ *   Python X | None → TS X | null
+ */
+
+// ══════════════════════════════════════════════
+// 通用
+// ══════════════════════════════════════════════
+
+/** 分页列表响应泛型 */
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+// ══════════════════════════════════════════════
+// Auth (auth_schema.py)
+// ══════════════════════════════════════════════
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface UserResponse {
+  id: number;
+  username: string;
+  role: string;
+  is_active: boolean;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  user: UserResponse;
+}
+
+// ══════════════════════════════════════════════
+// Alert (alert_schema.py)
+// ══════════════════════════════════════════════
+
+export interface AlertResponse {
+  id: number;
+  view_id: number;
+  exception_id: number;
+  timestamp: string;
+}
+
+export type AlertListResponse = PaginatedResponse<AlertResponse>;
+
+// ══════════════════════════════════════════════
+// Alert Group (alert_group_schema.py)
+// ══════════════════════════════════════════════
+
+export interface AlertGroupCreate {
+  name: string;
+}
+
+export interface AlertGroupResponse {
+  id: number;
+  name: string;
+}
+
+// ══════════════════════════════════════════════
+// Dashboard (dashboard_schema.py)
+// ══════════════════════════════════════════════
+
+export interface DashboardStats {
+  total_views: number;
+  active_alerts: number;
+  online_nodes: number;
+  total_devices: number;
+}
+
+export interface AlertTrendPoint {
+  date: string;
+  severity: string;
+  count: number;
+}
+
+export interface DashboardTrends {
+  points: AlertTrendPoint[];
+}
+
+// ══════════════════════════════════════════════
+// Device / Node (device_schema.py + node_schema.py)
+// ══════════════════════════════════════════════
+
+export interface NodeDeviceResponse {
+  id: number;
+  name: string;
+  streaming: boolean | null;
+}
+
+export interface NodeHealthResponse {
+  node_id: number;
+  is_connected: boolean;
+  video_devices: number;
+  audio_devices: number;
+  streaming_devices: number;
+}
+
+export interface VideoDeviceResponse {
+  id: number;
+  name: string;
+  node_id: number;
+  streaming: boolean;
+}
+
+export interface AudioDeviceResponse {
+  id: number;
+  name: string;
+  node_id: number;
+  streaming: boolean;
+}
+
+export interface NodeResponse {
+  id: number;
+  is_connected: boolean;
+  last_seen: string | null;
+}
+
+// ══════════════════════════════════════════════
+// Detection (detection_schema.py)
+// ══════════════════════════════════════════════
+
+export interface DetectionTypeCreate {
+  name: string;
+}
+
+export interface DetectionTypeResponse {
+  id: number;
+  name: string;
+}
+
+// ══════════════════════════════════════════════
+// Exception (exception_schema.py)
+// ══════════════════════════════════════════════
+
+export interface ExceptionCreate {
+  name: string;
+  severity: number;
+  alert_group_id: number | null;
+}
+
+export interface ExceptionResponse {
+  id: number;
+}
+
+// ══════════════════════════════════════════════
+// Fence (fence_schema.py)
+// ══════════════════════════════════════════════
+
+export interface FenceCreate {
+  coords: string;
+}
+
+export interface FenceResponse {
+  id: number;
+  coords: string;
+}
+
+// ══════════════════════════════════════════════
+// Log (log_schema.py)
+// ══════════════════════════════════════════════
+
+export interface LogEntry {
+  id: number;
+  level: string;
+  message: string;
+  timestamp: string;
+}
+
+export interface LogListResponse {
+  items: LogEntry[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+// ══════════════════════════════════════════════
+// Report (report_schema.py)
+// ══════════════════════════════════════════════
+
+export interface ReportItem {
+  label: string;
+  value: number;
+}
+
+export interface ReportResponse {
+  period: string;
+  total_alerts: number;
+  by_severity: ReportItem[];
+  top_exceptions: ReportItem[];
+}
+
+// ══════════════════════════════════════════════
+// View (view_schema.py)
+// ══════════════════════════════════════════════
+
+export interface ViewCreateRequest {
+  audio_id: number;
+  video_id: number;
+}
+
+export interface ViewResponse {
+  id: number;
+  audio_id: number;
+  video_id: number;
+  cache_path: string | null;
+  created_at: string | null;
+  flv_url: string | null;
+  webrtc_url: string | null;
+  rtmp_url: string | null;
+  warnings: string[];
+}
+
+// ══════════════════════════════════════════════
+// Named Person (named_person.py)
+// ══════════════════════════════════════════════
+
+export interface PersonCreate {
+  name: string;
+}
+
+export interface PersonUpdate {
+  name?: string | null;
+}
+
+export interface PersonResponse {
+  id: number;
+  name: string;
+  avatar_path: string | null;
+  feat_json_id: string | null;
+  created_at: string;
+}
+
+export type PersonListResponse = PaginatedResponse<PersonResponse>;
+
+// ══════════════════════════════════════════════
+// WSS Commands (wss/node_commands.py)
+// ══════════════════════════════════════════════
+
+export interface DeviceInfo {
+  id: number;
+  name: string;
+}
+
+export interface ConnectRequest {
+  token: string;
+}
+
+export interface ConnectResponse {
+  session_token: string;
+  videos: DeviceInfo[];
+  audios: DeviceInfo[];
+}
+
+export interface UpdateStreamRequest {
+  command: 'UPDATE_STREAM';
+  device_type: 'audio' | 'video';
+  device_id: number;
+  enable: boolean;
+}
+
+export interface UpdateStreamResponse {
+  success: boolean;
+  message: string | null;
+}

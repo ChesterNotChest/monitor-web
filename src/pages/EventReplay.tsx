@@ -4,33 +4,28 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useAlerts } from '../context/AlertContext';
 
-const sevLabel: Record<string,string> = { danger:'高危',warning:'中危',caution:'低危' };
-
 export default function EventReplay() {
   const { eventId } = useParams<{ eventId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { alerts, updateAlert } = useAlerts();
-  const alert = alerts.find(a=>a.id===eventId);
+  const { alerts, markHandled, markFalseAlarm } = useAlerts();
+  const alertId = Number(eventId);
+  const alert = alerts.find(a => a.id === alertId);
   const st = (location.state as any) || {};
   const from = st.from || '';
-  const reportStatus = st.reportStatus as string|undefined;
 
   if (!alert) {
-    return <div style={{padding:'var(--space-8)',textAlign:'center',color:'var(--text-disabled)'}}>未找到该告警事件</div>;
+    return (
+      <div style={{padding:'var(--space-8)',textAlign:'center',color:'var(--text-disabled)'}}>
+        未找到该告警事件 (ID: {eventId})
+      </div>
+    );
   }
 
-  const displayStatus = reportStatus
-    ? (reportStatus==='已处理'?'resolved':reportStatus==='标记误报'?'false-alarm':'pending')
-    : alert.status;
-  const isFromReport = from.startsWith('/report') || from.startsWith('/weekly-report');
-  const isResolved = displayStatus==='resolved' || displayStatus==='false-alarm';
-
-  const handleMark = (status: 'resolved' | 'false-alarm') => {
-    updateAlert(alert.id, { status });
+  const handleMark = (action: 'resolved' | 'false-alarm') => {
+    if (action === 'resolved') markHandled(alert.id);
+    else markFalseAlarm(alert.id);
   };
-
-  const statusText: Record<string,string> = { pending:'未处理',resolved:'已处理','false-alarm':'标记误报' };
 
   const goBack = () => {
     if (from) navigate(from);
@@ -44,10 +39,10 @@ export default function EventReplay() {
         <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'var(--space-3)',color:'var(--text-disabled)'}}>
           <Camera size={80}/>
           <div style={{fontSize:28,fontWeight:'var(--font-bold)',color:'var(--text-secondary)'}}>
-            {alert.cameraView} · 事件回放
+            视图 {alert.view_id} · 事件回放
           </div>
           <div style={{fontSize:'var(--text-lg)',color:'var(--text-disabled)'}}>
-            告警：{alert.title}
+            告警 #{alert.id}
           </div>
         </div>
         <div style={{padding:'var(--space-4) var(--space-6)'}}>
@@ -64,36 +59,27 @@ export default function EventReplay() {
       <div style={{width:360,flexShrink:0,display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
         <div style={{background:'var(--bg-surface)',borderRadius:'var(--radius-md)',padding:'var(--space-4)',border:'1px solid rgba(255,255,255,.06)'}}>
           <div style={{padding:'var(--space-4)',background:'var(--color-warning-dim)',borderRadius:'var(--radius-md)',marginBottom:'var(--space-4)',textAlign:'center'}}>
-            <div style={{fontSize:'var(--text-xl)',fontWeight:'var(--font-bold)',color:'var(--color-info)'}}>{alert.title}</div>
+            <div style={{fontSize:'var(--text-xl)',fontWeight:'var(--font-bold)',color:'var(--color-info)'}}>告警 #{alert.id}</div>
           </div>
           <div style={{display:'flex',flexDirection:'column',gap:'var(--space-3)',fontSize:'var(--text-base)',color:'var(--text-secondary)'}}>
-            <div>告警级别：<Badge level={alert.severity}>{sevLabel[alert.severity]}</Badge></div>
-            <div>告警类型：<span style={{color:'var(--text-primary)'}}>{alert.type}</span></div>
+            <div>告警级别：<Badge level="warning">中危</Badge></div>
             <div>发生时间：<span style={{color:'var(--text-primary)',fontFamily:'var(--font-mono)'}}>{alert.timestamp}</span></div>
-            <div>关联视图：<span style={{color:'var(--text-primary)',cursor:'pointer'}} onClick={()=>navigate(`/view/${alert.cameraId}`,{state:{from:`/replay/${alert.id}`}})}>{alert.cameraView}</span></div>
-            {/* Status display - always visible */}
+            <div>关联视图：<span style={{color:'var(--text-primary)',cursor:'pointer'}} onClick={()=>navigate(`/view/${alert.view_id}`,{state:{from:`/replay/${alert.id}`}})}>视图 {alert.view_id}</span></div>
+            <div>异常定义：<Badge level="neutral">#{alert.exception_id}</Badge></div>
             <div style={{marginTop:'var(--space-2)',padding:'var(--space-3)',background:'var(--bg-canvas)',borderRadius:'var(--radius-sm)',
               display:'flex',alignItems:'center',justifyContent:'space-between'}}>
               <span style={{color:'var(--text-secondary)'}}>处理状态</span>
-              <Badge level={isResolved?(displayStatus==='false-alarm'?'caution':'success'):'danger'}>{statusText[displayStatus]}</Badge>
+              <Badge level="danger">未处理</Badge>
             </div>
           </div>
         </div>
 
-        {/* Buttons: show action buttons from monitor, status only from reports */}
-        {!isFromReport && !isResolved && (
-          <div style={{display:'flex',gap:'var(--space-3)'}}>
-            <Button variant="secondary" size="lg" style={{flex:1}} onClick={()=>handleMark('false-alarm')}>设为误报</Button>
-            <Button variant="primary" size="lg" style={{flex:1}} onClick={()=>handleMark('resolved')}>设为已处理</Button>
-          </div>
-        )}
-        {!isFromReport && isResolved && (
-          <div style={{textAlign:'center',padding:'var(--space-3)',background:'var(--bg-surface)',borderRadius:'var(--radius-md)',
-            color:displayStatus==='false-alarm'?'var(--color-caution)':'var(--color-success)',fontWeight:'var(--font-medium)'}}>
-            此告警已{statusText[displayStatus]}
-          </div>
-        )}
-        {(from && !isFromReport) && (
+        <div style={{display:'flex',gap:'var(--space-3)'}}>
+          <Button variant="secondary" size="lg" style={{flex:1}} onClick={()=>handleMark('false-alarm')}>设为误报</Button>
+          <Button variant="primary" size="lg" style={{flex:1}} onClick={()=>handleMark('resolved')}>设为已处理</Button>
+        </div>
+
+        {from && (
           <Button variant="ghost" size="sm" style={{width:'100%'}} onClick={goBack}>返回</Button>
         )}
       </div>
