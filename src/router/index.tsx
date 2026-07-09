@@ -37,7 +37,8 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: <Navigate to="/main" replace /> },
       { path: '/main', element: <LazyPage Component={MainDashboard} /> },
-      { path: '/view', element: <LazyPage Component={LiveMonitor} /> },
+      { path: '/view', element: <Navigate to="/main" replace /> },
+      { path: '/view/:cameraId', element: <LazyPage Component={LiveMonitor} /> },
       { path: '/view/:viewId/edit', element: <LazyPage Component={FenceEditor} /> },
       { path: '/replay/:eventId', element: <LazyPage Component={EventReplay} /> },
       { path: '/log', element: <LazyPage Component={LogCenter} /> },
@@ -49,7 +50,6 @@ export const router = createBrowserRouter([
       { path: '/characters', element: <LazyPage Component={CharacterManagement} /> },
       { path: '/equipment', element: <LazyPage Component={DeviceInfo} /> },
       { path: '/exception-settings', element: <LazyPage Component={ExceptionSettings} /> },
-      { path: '/weekly-report/:weekNum', element: <LazyPage Component={WeeklyReportDetail} /> },
     ],
   },
 ]);

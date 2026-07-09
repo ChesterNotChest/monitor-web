@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, Radio, Bell, CheckCircle, AlertTriangle, ScrollText, Users, UserSquare, Monitor, Settings, Camera } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -16,12 +17,31 @@ const quickActions = [
 
 const severityLabel: Record<string,string> = { danger:'高危',warning:'中危',caution:'低危' };
 
+const sevOrder = { danger:3,warning:2,caution:1 } as const;
+
 export default function MainDashboard() {
   const navigate = useNavigate();
 
+  // Map cameraId → highest pending severity
+  const camAlertSev = useMemo(()=>{
+    const m: Record<string,keyof typeof sevOrder> = {};
+    for (const a of mockAlerts) {
+      if (a.status!=='pending') continue;
+      if (!m[a.cameraId] || sevOrder[a.severity]>sevOrder[m[a.cameraId]]) {
+        m[a.cameraId] = a.severity;
+      }
+    }
+    return m;
+  },[]);
+
+  const sevBorder = (camId:string) => {
+    const s = camAlertSev[camId];
+    if (!s) return '1px solid rgba(255,255,255,.06)';
+    return `2px solid var(--color-${s})`;
+  };
+
   const goTo = (path: string) => {
-    // @ts-expect-error View Transition API
-    if (document.startViewTransition) { /* @ts-expect-error */ document.startViewTransition(() => navigate(path)); }
+    if ((document as any).startViewTransition) { (document as any).startViewTransition(() => navigate(path)); }
     else navigate(path);
   };
 
@@ -60,9 +80,9 @@ export default function MainDashboard() {
           <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'var(--space-4)',flex:1,overflowY:'auto',alignContent:'start'}}>
             {mockCameras.map(cam=>(
               <div key={cam.id} className="camera-feed-main"
-                onClick={()=>goTo('/view')}
+                onClick={()=>goTo(`/view/${cam.id}`)}
                 style={{display:'flex',flexDirection:'column',background:'var(--bg-surface)',
-                  borderRadius:'var(--radius-md)',border:'1px solid rgba(255,255,255,.06)',overflow:'hidden',cursor:'pointer'}}>
+                  borderRadius:'var(--radius-md)',border:sevBorder(cam.id),overflow:'hidden',cursor:'pointer'}}>
                 <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',
                   background:'var(--bg-elevated)',minHeight:100}}>
                   <Camera size={32} style={{color:'var(--text-disabled)'}}/>
@@ -94,7 +114,7 @@ export default function MainDashboard() {
         <div style={{width:360,flexShrink:0,background:'var(--bg-surface)',borderRadius:'var(--radius-md)',
           padding:'var(--space-4)',border:'1px solid rgba(255,255,255,.06)',overflowY:'auto',display:'flex',flexDirection:'column',gap:'var(--space-3)'}}>
           <div style={{fontSize:'var(--text-lg)',fontWeight:'var(--font-semibold)',paddingBottom:'var(--space-2)',borderBottom:'1px solid rgba(255,255,255,.06)'}}>实时告警列表</div>
-          {mockAlerts.map(a=>(
+          {mockAlerts.filter(a=>a.status==='pending').map(a=>(
             <div key={a.id} style={{display:'flex',alignItems:'center',gap:'var(--space-3)',
               padding:'var(--space-3)',borderRadius:'var(--radius-sm)',background:'var(--bg-canvas)',
               borderLeft:`3px solid var(--color-${a.severity})`}}>
@@ -103,7 +123,7 @@ export default function MainDashboard() {
                 <div style={{fontSize:'var(--text-xs)',color:'var(--text-secondary)',marginTop:2}}>{a.timestamp} · {a.cameraView}</div>
               </div>
               <Badge level={a.severity}>{severityLabel[a.severity]}</Badge>
-              <Button variant="ghost" size="sm" onClick={()=>navigate('/view')}>进入视图</Button>
+              <Button variant="ghost" size="sm" onClick={()=>goTo(`/view/${a.cameraId}`)}>进入视图</Button>
             </div>
           ))}
         </div>

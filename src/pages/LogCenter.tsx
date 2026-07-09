@@ -20,7 +20,8 @@ export default function LogCenter() {
       <div style={panelStyle}>
         <div style={headerStyle}>本日日志</div>
         {mockLogEntries.map((e,i)=>(
-          <div key={i} style={{display:'flex',alignItems:'center',gap:'var(--space-3)',
+          <div key={i} onClick={()=>navigate(`/replay/${e.eventId}`)}
+            style={{display:'flex',alignItems:'center',gap:'var(--space-3)',cursor:'pointer',
             padding:'var(--space-3)',borderRadius:'var(--radius-sm)',background:i%2===0?'var(--bg-canvas)':'transparent',
             borderBottom:'1px solid rgba(255,255,255,.04)'}}>
             <span style={{fontFamily:'var(--font-mono)',fontSize:'var(--text-base)',color:'var(--text-primary)',width:48,flexShrink:0}}>{e.time}</span>
