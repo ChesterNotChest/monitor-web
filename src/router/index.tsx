@@ -16,6 +16,7 @@ const CharacterManagement = lazy(() => import('../pages/CharacterManagement'));
 const DeviceInfo = lazy(() => import('../pages/DeviceInfo'));
 const ExceptionSettings = lazy(() => import('../pages/ExceptionSettings'));
 const WeeklyReportDetail = lazy(() => import('../pages/WeeklyReportDetail'));
+const EventStats = lazy(() => import('../pages/EventStats'));
 
 function PageFallback() {
   return <div style={{ padding: 'var(--space-6)' }}><Skeleton variant="card" count={3} /></div>;
@@ -48,6 +49,7 @@ const protectedRoutes = [
   { path: '/characters', element: <LazyPage Component={CharacterManagement} /> },
   { path: '/equipment', element: <LazyPage Component={DeviceInfo} /> },
   { path: '/exception-settings', element: <LazyPage Component={ExceptionSettings} /> },
+  { path: '/event-stats', element: <LazyPage Component={EventStats} /> },
 ];
 
 export const router = createBrowserRouter([

@@ -6,11 +6,12 @@ import { Badge } from '../components/ui/Badge';
 import { StatusDot } from '../components/ui/StatusDot';
 import { Skeleton } from '../components/ui/Skeleton';
 import * as client from '../api/client';
-import type { ExceptionResponse, ExceptionCreate } from '../api/types';
+import type { ExceptionResponse, ExceptionCreate, AlertGroupResponse } from '../api/types';
 import { SeverityLabel, SeverityBadgeLevel, SeverityLevel } from '../api/enums';
 
 export default function ExceptionSettings() {
   const [exceptions, setExceptions] = useState<ExceptionResponse[]>([]);
+  const [alertGroups, setAlertGroups] = useState<AlertGroupResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<number | null>(null);
@@ -22,8 +23,12 @@ export default function ExceptionSettings() {
     setLoading(true);
     setError('');
     try {
-      const data = await client.fetchExceptions();
+      const [data, groups] = await Promise.all([
+        client.fetchExceptions(),
+        client.fetchAlertGroups(),
+      ]);
       setExceptions(data);
+      setAlertGroups(groups);
     } catch (e) {
       setError(e instanceof Error ? e.message : '加载失败');
     } finally {
@@ -128,12 +133,29 @@ export default function ExceptionSettings() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
             <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--font-bold)', color: 'var(--text-primary)' }}>详情</h3>
           </div>
-          {selectedEx ? (
+          {selectedEx ? (() => {
+            const group = alertGroups.find(g => g.id === selectedEx.group_id);
+            return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', fontSize: 'var(--text-base)', color: 'var(--text-secondary)' }}>
               <div>名称：<span style={{ color: 'var(--text-primary)', fontWeight: 'var(--font-medium)' }}>{selectedEx.name}</span></div>
               <div>严重级别：<Badge level={SeverityBadgeLevel[selectedEx.severity as keyof typeof SeverityBadgeLevel] || 'warning'}>{SeverityLabel[selectedEx.severity as keyof typeof SeverityLabel] || selectedEx.severity}</Badge></div>
-              <div>告警分组：<span style={{ color: 'var(--text-primary)' }}>{selectedEx.group_id ?? '无'}</span></div>
+              <div>告警分组：<span style={{ color: 'var(--text-primary)' }}>{group ? group.name : selectedEx.group_id ? `#${selectedEx.group_id}` : '无'}</span></div>
+              {group && group.responses.length > 0 && (
+                <div>
+                  <div style={{ marginBottom: 'var(--space-1)' }}>响应动作：</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)' }}>
+                    {group.responses.map(r => (
+                      <Badge key={r.id} level="neutral">{r.name}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {selectedEx.face_result_id != null && <div>人脸识别结果ID：<span style={{ color: 'var(--text-primary)' }}>{selectedEx.face_result_id}</span></div>}
+              {selectedEx.fence_event_id != null && <div>围栏事件ID：<span style={{ color: 'var(--text-primary)' }}>{selectedEx.fence_event_id}</span></div>}
+              <div>创建时间：<span style={{ color: 'var(--text-primary)', fontSize: 'var(--text-sm)' }}>{selectedEx.created_at}</span></div>
             </div>
+            );
+          })()
           ) : (
             <div style={{ color: 'var(--text-disabled)', textAlign: 'center', padding: 'var(--space-8)' }}>
               请选择左侧异常类型
