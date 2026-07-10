@@ -8,17 +8,26 @@ import { useAlerts } from '../context/AlertContext';
 import * as client from '../api/client';
 import type { EventResponse } from '../api/types';
 
+/**
+ * EventReplay — 事件回放页面。
+ *
+ * 路由参数 `alertId` 来自告警列表导航（如 `navigate('/replay/${alert.id}')`）。
+ * 事件（Event）和告警（Alert）在 server 端共享同一张 situation_events 表，
+ * 因此 alertId 可以直接用于：
+ *   1. GET  /events/{alertId}   → 获取事件详情
+ *   2. PUT  /alerts/{alertId}/handle → 标记告警已处理
+ */
 export default function EventReplay() {
-  const { eventId } = useParams<{ eventId: string }>();
+  const { alertId } = useParams<{ alertId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
   const { markHandled, markFalseAlarm } = useAlerts();
 
-  const [event, setEvent] = useState<EventResponse | null>(null);
+  const [eventDetail, setEventDetail] = useState<EventResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const eventIdNum = Number(eventId);
+  const id = Number(alertId); // event/alert 共享 situation_events 表，ID 相同
   const st = (location.state as any) || {};
   const from = st.from || '';
 
@@ -27,8 +36,8 @@ export default function EventReplay() {
       setLoading(true);
       setError('');
       try {
-        const data = await client.fetchEventById(eventIdNum);
-        setEvent(data);
+        const data = await client.fetchEventById(id);
+        setEventDetail(data);
       } catch (e) {
         setError(e instanceof Error ? e.message : '事件不存在');
       } finally {
@@ -36,14 +45,11 @@ export default function EventReplay() {
       }
     };
     fetchData();
-  }, [eventIdNum]);
+  }, [id]);
 
-  // Note: Event and Alert share the same underlying DB table (situation_events),
-  // so event.id can be passed to the alerts API endpoints. This is intentional.
   const handleMark = async (action: 'resolved' | 'false-alarm') => {
-    if (!event) return;
-    if (action === 'resolved') await markHandled(event.id);
-    else await markFalseAlarm(event.id);
+    if (action === 'resolved') await markHandled(id);
+    else await markFalseAlarm(id);
   };
 
   const goBack = () => {
@@ -60,10 +66,10 @@ export default function EventReplay() {
     );
   }
 
-  if (error || !event) {
+  if (error || !eventDetail) {
     return (
       <div style={{ padding: 'var(--space-8)', textAlign: 'center', color: 'var(--text-disabled)' }}>
-        <div style={{ marginBottom: 'var(--space-3)' }}>{error || `未找到该告警事件 (ID: ${eventId})`}</div>
+        <div style={{ marginBottom: 'var(--space-3)' }}>{error || `未找到该告警事件 (ID: ${alertId})`}</div>
         <Button variant="secondary" onClick={goBack}>返回</Button>
       </div>
     );
@@ -76,10 +82,10 @@ export default function EventReplay() {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', color: 'var(--text-disabled)' }}>
           <Camera size={80} />
           <div style={{ fontSize: 28, fontWeight: 'var(--font-bold)', color: 'var(--text-secondary)' }}>
-            视图 {event.view_id} · 事件回放
+            视图 {eventDetail.view_id} · 事件回放
           </div>
           <div style={{ fontSize: 'var(--text-lg)', color: 'var(--text-disabled)' }}>
-            事件 #{event.id}
+            告警 #{id}
           </div>
         </div>
         <div style={{ padding: 'var(--space-4) var(--space-6)' }}>
@@ -96,12 +102,12 @@ export default function EventReplay() {
       <div style={{ width: 360, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
         <div style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)', border: '1px solid rgba(255,255,255,.06)' }}>
           <div style={{ padding: 'var(--space-4)', background: 'var(--color-warning-dim)', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-4)', textAlign: 'center' }}>
-            <div style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--font-bold)', color: 'var(--color-info)' }}>事件 #{event.id}</div>
+            <div style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--font-bold)', color: 'var(--color-info)' }}>告警 #{id}</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', fontSize: 'var(--text-base)', color: 'var(--text-secondary)' }}>
-            <div>发生时间：<span style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{event.timestamp}</span></div>
-            <div>关联视图：<span style={{ color: 'var(--text-primary)', cursor: 'pointer' }} onClick={() => navigate(`/view/${event.view_id}`, { state: { from: `/replay/${event.id}` } })}>视图 {event.view_id}</span></div>
-            <div>异常定义：<Badge level="neutral">#{event.exception_id}</Badge></div>
+            <div>发生时间：<span style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{eventDetail.timestamp}</span></div>
+            <div>关联视图：<span style={{ color: 'var(--text-primary)', cursor: 'pointer' }} onClick={() => navigate(`/view/${eventDetail.view_id}`, { state: { from: `/replay/${id}` } })}>视图 {eventDetail.view_id}</span></div>
+            <div>异常定义：<Badge level="neutral">#{eventDetail.exception_id}</Badge></div>
             <div style={{ marginTop: 'var(--space-2)', padding: 'var(--space-3)', background: 'var(--bg-canvas)', borderRadius: 'var(--radius-sm)',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--text-secondary)' }}>处理状态</span>
