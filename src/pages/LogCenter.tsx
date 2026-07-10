@@ -1,7 +1,12 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { useAlerts } from '../context/AlertContext';
+import { Skeleton } from '../components/ui/Skeleton';
+import * as client from '../api/client';
+import type { LogEntry } from '../api/types';
 
 /** 动态生成最近 6 天日期列表 */
 function recentDates(count: number): string[] {
@@ -32,18 +37,35 @@ function recentWeeks(count: number): { label: string; range: string; idx: number
 
 export default function LogCenter() {
   const navigate = useNavigate();
-  const { alerts } = useAlerts();
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const reportDates = recentDates(6);
   const weeks = recentWeeks(6);
 
-  // Log entries from alerts (last 6 by time desc)
-  const logEntries = [...alerts]
+  const fetchData = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await client.fetchLogs(1, 50);
+      setLogs(data.items);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '加载失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const logEntries = [...logs]
     .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
     .slice(0, 6)
-    .map(a => ({
-      time: a.timestamp.slice(11, 16),
-      viewId: a.view_id,
-      eventId: a.id,
+    .map(l => ({
+      time: l.timestamp.slice(11, 16),
+      level: l.level,
+      message: l.message,
+      id: l.id,
     }));
 
   const panelStyle: React.CSSProperties = {
@@ -59,23 +81,31 @@ export default function LogCenter() {
     <div style={{ display: 'flex', gap: 'var(--space-4)', height: '100%', padding: 'var(--space-4)' }}>
       <div style={panelStyle}>
         <div style={headerStyle}>本日日志</div>
-        {logEntries.map((e, i) => (
-          <div
-            key={i}
-            onClick={() => navigate(`/replay/${e.eventId}`, { state: { from: '/log' } })}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 'var(--space-3)', cursor: 'pointer',
-              padding: 'var(--space-3)', borderRadius: 'var(--radius-sm)', background: i % 2 === 0 ? 'var(--bg-canvas)' : 'transparent',
-              borderBottom: '1px solid rgba(255,255,255,.04)',
-            }}
-          >
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-base)', color: 'var(--text-primary)', width: 48, flexShrink: 0 }}>{e.time}</span>
-            <span style={{ fontSize: 'var(--text-base)', color: 'var(--text-secondary)', width: 100, textAlign: 'center', flexShrink: 0 }}>视图 {e.viewId}</span>
-            <span style={{ flex: 1, fontSize: 'var(--text-base)', color: 'var(--text-primary)' }}>告警 #{e.eventId}</span>
-            <Badge level="warning">未处理</Badge>
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} style={{ height: 40, marginBottom: 'var(--space-2)' }} />)
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: 'var(--space-4)', color: 'var(--color-danger)' }}>
+            <AlertTriangle size={24} style={{ marginBottom: 'var(--space-2)' }} />
+            <div>{error}</div>
+            <Button variant="secondary" size="sm" style={{ marginTop: 'var(--space-3)' }} onClick={fetchData}>重试</Button>
           </div>
-        ))}
-        {logEntries.length === 0 && (
+        ) : (
+          logEntries.map((e, i) => (
+            <div
+              key={i}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
+                padding: 'var(--space-3)', borderRadius: 'var(--radius-sm)', background: i % 2 === 0 ? 'var(--bg-canvas)' : 'transparent',
+                borderBottom: '1px solid rgba(255,255,255,.04)',
+              }}
+            >
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-base)', color: 'var(--text-primary)', width: 48, flexShrink: 0 }}>{e.time}</span>
+              <span style={{ fontSize: 'var(--text-base)', color: 'var(--text-secondary)', flex: 1 }}>{e.message}</span>
+              <Badge level={e.level === 'ERROR' ? 'danger' : e.level === 'WARNING' ? 'warning' : 'neutral'}>{e.level}</Badge>
+            </div>
+          ))
+        )}
+        {!loading && !error && logEntries.length === 0 && (
           <div style={{ color: 'var(--text-disabled)', textAlign: 'center', padding: 'var(--space-8)' }}>暂无日志</div>
         )}
       </div>

@@ -1,19 +1,34 @@
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Camera } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
+import { Skeleton } from '../components/ui/Skeleton';
 import { useAlerts } from '../context/AlertContext';
-import { seedViews } from '../api/seed';
+import * as client from '../api/client';
+import type { ViewResponse } from '../api/types';
 
 export default function LiveMonitor() {
   const { cameraId } = useParams<{ cameraId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
   const { alerts } = useAlerts();
+
+  const [view, setView] = useState<ViewResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
   const viewId = cameraId ? Number(cameraId) : null;
-  const view = seedViews.find(v => v.id === viewId);
   const viewAlerts = alerts.filter(a => a.view_id === viewId);
   const from = (location.state as any)?.from || '/main';
+
+  useEffect(() => {
+    if (viewId === null) return;
+    setLoading(true);
+    client.fetchViewById(viewId)
+      .then(setView)
+      .catch(() => setView(null))
+      .finally(() => setLoading(false));
+  }, [viewId]);
 
   return (
     <div style={{display:'flex',height:'100%',gap:'var(--space-4)',padding:'var(--space-4)'}}>
@@ -27,7 +42,7 @@ export default function LiveMonitor() {
         <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'var(--space-4)',color:'var(--text-disabled)'}}>
           <Camera size={80}/>
           <div style={{fontSize:28,fontWeight:'var(--font-bold)',color:'var(--text-secondary)'}}>
-            {view ? `视图 ${view.id}` : `视图 ${cameraId}`}
+            {loading ? '加载中...' : view ? `视图 ${view.id}` : `视图 ${cameraId}`}
           </div>
         </div>
       </div>

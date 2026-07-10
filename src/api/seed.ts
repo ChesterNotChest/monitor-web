@@ -1,6 +1,9 @@
 /**
- * 最小种子数据 —— 每个实体 1-3 条，使用 server-aligned 类型。
- * 仅供开发阶段页面不白屏，API 就绪后删除此文件。
+ * @deprecated 最小种子数据 —— 仅供开发阶段页面不白屏。
+ * 所有页面已迁移至真实 API 调用，此文件不再被任何页面 import。
+ * 保留作为离线开发 fallback，生产环境可安全删除。
+ *
+ * 来源：monitor-server/src/seed.py → 对应 HTTP Schema
  */
 
 import type {
@@ -74,15 +77,23 @@ export const seedViews: ViewResponse[] = [
 // ── Alert Groups ──────────────────────────────
 
 export const seedAlertGroups: AlertGroupResponse[] = [
-  { id: 1, name: '高危告警' },
-  { id: 2, name: '中危告警' },
-  { id: 3, name: '低危告警' },
+  { id: 1, name: '高危告警', created_at: '2026-07-01T00:00:00Z', responses: [] },
+  { id: 2, name: '中危告警', created_at: '2026-07-01T00:00:00Z', responses: [] },
+  { id: 3, name: '低危告警', created_at: '2026-07-01T00:00:00Z', responses: [] },
 ];
 
 // ── Fences ────────────────────────────────────
 
 export const seedFences: FenceResponse[] = [
-  { id: 1, coords: JSON.stringify({ x: 0, y: 0, w: 200, h: 150 }) },
+  {
+    id: 1,
+    name: '围栏1',
+    view_id: 1,
+    coords: [[0, 0], [200, 0], [200, 150], [0, 150]],
+    dwell_time: 10,
+    density: 0.6,
+    leave_frames: 5,
+  },
 ];
 
 // ── Exceptions ────────────────────────────────

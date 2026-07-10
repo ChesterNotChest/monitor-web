@@ -53,6 +53,7 @@ export interface AlertResponse {
   id: number;
   view_id: number;
   exception_id: number;
+  recording_id: number | null;
   timestamp: string;
 }
 
@@ -62,6 +63,11 @@ export type AlertListResponse = PaginatedResponse<AlertResponse>;
 // Alert Group (alert_group_schema.py)
 // ══════════════════════════════════════════════
 
+export interface ResponseActionRef {
+  id: number;
+  name: string;
+}
+
 export interface AlertGroupCreate {
   name: string;
 }
@@ -69,6 +75,8 @@ export interface AlertGroupCreate {
 export interface AlertGroupResponse {
   id: number;
   name: string;
+  created_at: string;
+  responses: ResponseActionRef[];
 }
 
 // ══════════════════════════════════════════════
@@ -141,6 +149,7 @@ export interface DetectionTypeCreate {
 export interface DetectionTypeResponse {
   id: number;
   name: string;
+  created_at: string;
 }
 
 // ══════════════════════════════════════════════
@@ -150,11 +159,19 @@ export interface DetectionTypeResponse {
 export interface ExceptionCreate {
   name: string;
   severity: number;
-  alert_group_id: number | null;
+  group_id: number | null;
+  face_result_id?: number | null;
+  fence_event_id?: number | null;
 }
 
 export interface ExceptionResponse {
   id: number;
+  name: string;
+  severity: number;
+  group_id: number | null;
+  face_result_id: number | null;
+  fence_event_id: number | null;
+  created_at: string;
 }
 
 // ══════════════════════════════════════════════
@@ -162,12 +179,22 @@ export interface ExceptionResponse {
 // ══════════════════════════════════════════════
 
 export interface FenceCreate {
-  coords: string;
+  name: string;
+  view_id: number;
+  coords: [number, number][];
+  dwell_time?: number;
+  density?: number;
+  leave_frames?: number;
 }
 
 export interface FenceResponse {
   id: number;
-  coords: string;
+  name: string;
+  view_id: number;
+  coords: [number, number][];
+  dwell_time: number;
+  density: number;
+  leave_frames: number;
 }
 
 // ══════════════════════════════════════════════
@@ -276,4 +303,45 @@ export interface UpdateStreamRequest {
 export interface UpdateStreamResponse {
   success: boolean;
   message: string | null;
+}
+
+// ══════════════════════════════════════════════
+// Event (event.py)
+// ══════════════════════════════════════════════
+
+export interface EventResponse {
+  id: number;
+  view_id: number;
+  exception_id: number;
+  timestamp: string;
+}
+
+export interface EventListResponse {
+  items: EventResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface ExceptionStatsItem {
+  exception_id: number;
+  exception_severity: string;
+  count: number;
+}
+
+export interface TrendItem {
+  period: string;
+  count: number;
+}
+
+// ══════════════════════════════════════════════
+// Recording (replay.py)
+// ══════════════════════════════════════════════
+
+export interface RecordingResponse {
+  id: number;
+  view_id: number;
+  file_path: string;
+  start_time: string;
+  end_time: string | null;
 }

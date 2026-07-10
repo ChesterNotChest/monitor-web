@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Zap, Eye, EyeOff } from 'lucide-react';
+import { Zap, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 
@@ -9,13 +9,16 @@ export default function Login() {
   const [pwd, setPwd] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleLogin = async () => {
     setError('');
     if (!username.trim() || !pwd) { setError('请输入账号和密码'); return; }
+    setSubmitting(true);
     const ok = await login(username.trim(), pwd);
+    setSubmitting(false);
     if (ok) { navigate('/main',{replace:true}); }
     else { setError('账号或密码错误'); }
   };
@@ -91,8 +94,8 @@ export default function Login() {
           )}
 
           <Button variant="primary" size="lg" style={{width:'100%',marginTop:'var(--space-2)'}}
-            onClick={handleLogin}>
-            登 录
+            onClick={handleLogin} disabled={submitting}>
+            {submitting ? <Loader2 size={18} style={{animation:'spin 1s linear infinite'}} /> : '登 录'}
           </Button>
         </div>
 
