@@ -99,11 +99,7 @@ export default function Login() {
           </Button>
         </div>
 
-        {/* Hint */}
-        <div style={{marginTop:'var(--space-6)',textAlign:'center',fontSize:'var(--text-xs)',color:'var(--text-disabled)'}}>
-          测试账号: admin / 123
         </div>
-      </div>
     </div>
   );
 }

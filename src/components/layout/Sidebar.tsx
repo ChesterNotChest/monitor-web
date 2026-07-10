@@ -91,7 +91,7 @@ export function Sidebar() {
               <item.icon size={20} style={{flexShrink:0}} />
               <span style={{display:collapsed?'none':undefined}}>
                 <span style={{flex:1,textAlign:'left'}}>{item.label}</span>
-                {item.badge && item.badge>0 && (
+                {item.badge != null && item.badge > 0 && (
                   <span style={{background:'var(--color-danger)',color:'#fff',fontSize:11,fontWeight:'var(--font-bold)',
                     minWidth:18,height:18,borderRadius:'var(--radius-full)',display:'flex',alignItems:'center',
                     justifyContent:'center',padding:'0 5px',lineHeight:1}}>{item.badge}
