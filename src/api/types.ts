@@ -159,7 +159,7 @@ export interface DetectionTypeResponse {
 export interface ExceptionCreate {
   name: string;
   severity: number;
-  group_id: number | null;
+  group_id?: number | null;
   face_result_id?: number | null;
   fence_event_id?: number | null;
 }
@@ -181,7 +181,7 @@ export interface ExceptionResponse {
 export interface FenceCreate {
   name: string;
   view_id: number;
-  coords: [number, number][];
+  coords: number[][];
   dwell_time?: number;
   density?: number;
   leave_frames?: number;
@@ -191,7 +191,7 @@ export interface FenceResponse {
   id: number;
   name: string;
   view_id: number;
-  coords: [number, number][];
+  coords: number[][];
   dwell_time: number;
   density: number;
   leave_frames: number;

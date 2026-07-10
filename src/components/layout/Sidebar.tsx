@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ScrollText, Users, UserSquare, Monitor, AlertTriangle, ChevronLeft, ChevronRight, Zap, LogOut, Key } from 'lucide-react';
+import { LayoutDashboard, ScrollText, Users, UserSquare, Monitor, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, Zap, LogOut, Key } from 'lucide-react';
 import { useAlerts } from '../../context/AlertContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -13,6 +13,7 @@ const baseItems: NavItem[] = [
   { path:'/characters',label:'人物管理',icon:UserSquare },
   { path:'/equipment',label:'设备信息',icon:Monitor },
   { path:'/exception-settings',label:'异常设置',icon:AlertTriangle },
+  { path:'/event-stats',label:'事件统计',icon:BarChart3 },
 ];
 
 export function Sidebar() {

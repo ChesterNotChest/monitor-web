@@ -6,7 +6,7 @@ import { Badge } from '../components/ui/Badge';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useAlerts } from '../context/AlertContext';
 import * as client from '../api/client';
-import type { DashboardStats, ViewResponse } from '../api/types';
+import type { DashboardStats, ViewResponse, DashboardTrends } from '../api/types';
 import { SeverityLabel, SeverityBadgeLevel } from '../api/enums';
 
 const quickActions = [
@@ -21,6 +21,7 @@ export default function MainDashboard() {
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [views, setViews] = useState<ViewResponse[]>([]);
+  const [trends, setTrends] = useState<DashboardTrends | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -28,12 +29,14 @@ export default function MainDashboard() {
     setLoading(true);
     setError('');
     try {
-      const [s, v] = await Promise.all([
+      const [s, v, t] = await Promise.all([
         client.fetchDashboardStats(),
         client.fetchViews(),
+        client.fetchDashboardTrends(),
       ]);
       setStats(s);
       setViews(v);
+      setTrends(t);
     } catch (e) {
       setError(e instanceof Error ? e.message : '加载失败');
     } finally {
@@ -94,6 +97,9 @@ export default function MainDashboard() {
         )}
       </div>
 
+      {/* Trend Chart */}
+      {!loading && !error && trends && trends.points.length > 0 && <TrendChart points={trends.points} />}
+
       {/* Views Grid + Actions + Alerts Panel */}
       <div style={{display:'flex',gap:'var(--space-4)',flex:1,minHeight:0}}>
         <div style={{flex:1,display:'flex',flexDirection:'column',gap:'var(--space-4)',minWidth:0}}>
@@ -152,6 +158,76 @@ export default function MainDashboard() {
           ))}
           {pendingAlerts.length===0&&<div style={{color:'var(--text-disabled)',textAlign:'center',padding:'var(--space-8)'}}>暂无未处理告警</div>}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Trend Chart (pure SVG, zero dependencies) ──
+
+const SEVERITY_COLORS: Record<string, string> = {
+  INFO: 'var(--color-info)',
+  WARNING: 'var(--color-warning)',
+  CRITICAL: 'var(--color-danger)',
+  EMERGENCY: '#ff4444',
+};
+
+function TrendChart({ points }: { points: { date: string; severity: string; count: number }[] }) {
+  const maxCount = Math.max(...points.map(p => p.count), 1);
+  const barWidth = 12;
+  const gap = 4;
+  const totalWidth = points.length * (barWidth + gap);
+  const chartH = 120;
+
+  return (
+    <div style={{
+      background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)',
+      padding: 'var(--space-4) var(--space-5)',
+      border: '1px solid rgba(255,255,255,.06)',
+    }}>
+      <div style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-semibold)', color: 'var(--text-primary)', marginBottom: 'var(--space-3)' }}>
+        告警趋势
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <svg width={Math.max(totalWidth, 300)} height={chartH + 30} style={{ display: 'block' }}>
+          {/* Bars */}
+          {points.map((p, i) => {
+            const barH = Math.max((p.count / maxCount) * chartH, 2);
+            const x = i * (barWidth + gap);
+            const y = chartH - barH;
+            return (
+              <rect
+                key={i}
+                x={x}
+                y={y}
+                width={barWidth}
+                height={barH}
+                fill={SEVERITY_COLORS[p.severity] || 'var(--color-info)'}
+                rx={2}
+              >
+                <title>{p.date} {p.severity}: {p.count}</title>
+              </rect>
+            );
+          })}
+          {/* Baseline */}
+          <line x1={0} y1={chartH} x2={totalWidth} y2={chartH} stroke="rgba(255,255,255,.1)" strokeWidth={1} />
+          {/* Date labels (every ~7th) */}
+          {points.map((p, i) => {
+            if (i % Math.max(Math.floor(points.length / 6), 1) !== 0) return null;
+            return (
+              <text
+                key={`lbl-${i}`}
+                x={i * (barWidth + gap) + barWidth / 2}
+                y={chartH + 16}
+                textAnchor="middle"
+                fill="var(--text-disabled)"
+                fontSize={10}
+              >
+                {p.date.slice(5)}
+              </text>
+            );
+          })}
+        </svg>
       </div>
     </div>
   );
