@@ -38,6 +38,8 @@ export default function EventReplay() {
     fetchData();
   }, [eventIdNum]);
 
+  // Note: Event and Alert share the same underlying DB table (situation_events),
+  // so event.id can be passed to the alerts API endpoints. This is intentional.
   const handleMark = async (action: 'resolved' | 'false-alarm') => {
     if (!event) return;
     if (action === 'resolved') await markHandled(event.id);
