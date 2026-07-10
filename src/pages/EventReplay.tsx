@@ -19,7 +19,7 @@ export default function EventReplay() {
   const { alertId } = useParams<{ alertId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { alerts, markHandled, markFalseAlarm } = useAlerts();
+  const { markHandled, markFalseAlarm } = useAlerts();
 
   const id = Number(alertId);
   const st = (location.state as any) || {};
@@ -58,6 +58,10 @@ export default function EventReplay() {
         setEventDetail(evt);
         const recs = await client.fetchRecordings(evt.view_id).catch(() => [] as RecordingResponse[]);
         setRecordings(recs);
+        // Check if this alert was already handled (removed from alerts list)
+        if (!alerts.some(a => a.id === id)) {
+          setReviewStatus('handled');
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : '事件不存在');
       } finally {
