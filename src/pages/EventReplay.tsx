@@ -24,14 +24,17 @@ export default function EventReplay() {
   const id = Number(alertId);
   const st = (location.state as any) || {};
   const from = st.from || '';
+  const urlStatus = new URLSearchParams(window.location.search).get('status') as ReviewStatus | null;
 
   const [eventDetail, setEventDetail] = useState<EventResponse | null>(null);
   const [recordings, setRecordings] = useState<RecordingResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Review
-  const [reviewStatus, setReviewStatus] = useState<ReviewStatus>('pending');
+  // Review — init from URL param, fallback to alerts check
+  const [reviewStatus, setReviewStatus] = useState<ReviewStatus>(
+    urlStatus === 'handled' || urlStatus === 'false_alarm' ? urlStatus : 'pending'
+  );
 
   // Video
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -55,10 +58,6 @@ export default function EventReplay() {
         setEventDetail(evt);
         const recs = await client.fetchRecordings(evt.view_id).catch(() => [] as RecordingResponse[]);
         setRecordings(recs);
-        // Check if this alert was already handled (removed from alerts list)
-        if (!alerts.some(a => a.id === id)) {
-          setReviewStatus('handled');
-        }
       } catch (e) {
         setError(e instanceof Error ? e.message : '事件不存在');
       } finally {
@@ -151,6 +150,10 @@ export default function EventReplay() {
     if (action === 'handled') await markHandled(id);
     else if (action === 'false_alarm') await markFalseAlarm(id);
     setReviewStatus(action);
+    // Persist status in browser URL so refresh doesn't lose it
+    const url = new URL(window.location.href);
+    url.searchParams.set('status', action);
+    window.history.replaceState(null, '', url.toString());
     // Auto-navigate back after 1.5s
     setTimeout(() => goBack(), 1500);
   };
