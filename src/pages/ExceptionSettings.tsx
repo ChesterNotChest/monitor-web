@@ -133,30 +133,7 @@ export default function ExceptionSettings() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
             <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--font-bold)', color: 'var(--text-primary)' }}>详情</h3>
           </div>
-          {selectedEx ? (() => {
-            const group = alertGroups.find(g => g.id === selectedEx.group_id);
-            return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', fontSize: 'var(--text-base)', color: 'var(--text-secondary)' }}>
-              <div>名称：<span style={{ color: 'var(--text-primary)', fontWeight: 'var(--font-medium)' }}>{selectedEx.name}</span></div>
-              <div>严重级别：<Badge level={SeverityBadgeLevel[selectedEx.severity as keyof typeof SeverityBadgeLevel] || 'warning'}>{SeverityLabel[selectedEx.severity as keyof typeof SeverityLabel] || selectedEx.severity}</Badge></div>
-              <div>告警分组：<span style={{ color: 'var(--text-primary)' }}>{group ? group.name : selectedEx.group_id ? `#${selectedEx.group_id}` : '无'}</span></div>
-              {group && group.responses.length > 0 && (
-                <div>
-                  <div style={{ marginBottom: 'var(--space-1)' }}>响应动作：</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)' }}>
-                    {group.responses.map(r => (
-                      <Badge key={r.id} level="neutral">{r.name}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {selectedEx.face_result_id != null && <div>人脸识别结果ID：<span style={{ color: 'var(--text-primary)' }}>{selectedEx.face_result_id}</span></div>}
-              {selectedEx.fence_event_id != null && <div>围栏事件ID：<span style={{ color: 'var(--text-primary)' }}>{selectedEx.fence_event_id}</span></div>}
-              <div>创建时间：<span style={{ color: 'var(--text-primary)', fontSize: 'var(--text-sm)' }}>{selectedEx.created_at}</span></div>
-            </div>
-            );
-          })()
-          ) : (
+          {selectedEx ? <ExceptionDetail selectedEx={selectedEx} alertGroups={alertGroups} /> : (
             <div style={{ color: 'var(--text-disabled)', textAlign: 'center', padding: 'var(--space-8)' }}>
               请选择左侧异常类型
             </div>
@@ -188,6 +165,30 @@ export default function ExceptionSettings() {
           <Button variant="primary" style={{ width: '100%' }} onClick={doEdit} disabled={actionLoading}>保存修改</Button>
         </Modal>
       )}
+    </div>
+  );
+}
+
+function ExceptionDetail({ selectedEx, alertGroups }: { selectedEx: ExceptionResponse; alertGroups: AlertGroupResponse[] }) {
+  const group = alertGroups.find(g => g.id === selectedEx.group_id);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', fontSize: 'var(--text-base)', color: 'var(--text-secondary)' }}>
+      <div>名称：<span style={{ color: 'var(--text-primary)', fontWeight: 'var(--font-medium)' }}>{selectedEx.name}</span></div>
+      <div>严重级别：<Badge level={SeverityBadgeLevel[selectedEx.severity as keyof typeof SeverityBadgeLevel] || 'warning'}>{SeverityLabel[selectedEx.severity as keyof typeof SeverityLabel] || selectedEx.severity}</Badge></div>
+      <div>告警分组：<span style={{ color: 'var(--text-primary)' }}>{group ? group.name : selectedEx.group_id ? `#${selectedEx.group_id}` : '无'}</span></div>
+      {group && group.responses.length > 0 && (
+        <div>
+          <div style={{ marginBottom: 'var(--space-1)' }}>响应动作：</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)' }}>
+            {group.responses.map(r => (
+              <Badge key={r.id} level="neutral">{r.name}</Badge>
+            ))}
+          </div>
+        </div>
+      )}
+      {selectedEx.face_result_id != null && <div>人脸识别结果ID：<span style={{ color: 'var(--text-primary)' }}>{selectedEx.face_result_id}</span></div>}
+      {selectedEx.fence_event_id != null && <div>围栏事件ID：<span style={{ color: 'var(--text-primary)' }}>{selectedEx.fence_event_id}</span></div>}
+      <div>创建时间：<span style={{ color: 'var(--text-primary)', fontSize: 'var(--text-sm)' }}>{selectedEx.created_at}</span></div>
     </div>
   );
 }

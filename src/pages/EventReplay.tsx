@@ -1,21 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { Camera } from 'lucide-react';
+import { Camera, Play, AlertTriangle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useAlerts } from '../context/AlertContext';
 import * as client from '../api/client';
-import type { EventResponse } from '../api/types';
+import type { EventResponse, RecordingResponse } from '../api/types';
+import flvjs from 'flv.js';
 
 /**
  * EventReplay — 事件回放页面。
  *
- * 路由参数 `alertId` 来自告警列表导航（如 `navigate('/replay/${alert.id}')`）。
- * 事件（Event）和告警（Alert）在 server 端共享同一张 situation_events 表，
- * 因此 alertId 可以直接用于：
- *   1. GET  /events/{alertId}   → 获取事件详情
- *   2. PUT  /alerts/{alertId}/handle → 标记告警已处理
+ * 路由参数 `alertId` 来自告警列表导航。
+ * 事件和告警共享同一张 situation_events 表，ID 相同。
  */
 export default function EventReplay() {
   const { alertId } = useParams<{ alertId: string }>();
@@ -24,38 +22,119 @@ export default function EventReplay() {
   const { markHandled, markFalseAlarm } = useAlerts();
 
   const [eventDetail, setEventDetail] = useState<EventResponse | null>(null);
+  const [recordings, setRecordings] = useState<RecordingResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const id = Number(alertId); // event/alert 共享 situation_events 表，ID 相同
+  const id = Number(alertId);
   const st = (location.state as any) || {};
   const from = st.from || '';
 
+  // Video
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const playerRef = useRef<flvjs.Player | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [videoError, setVideoError] = useState('');
+  const progressRef = useRef<HTMLDivElement>(null);
+
+  const activeRecording = recordings.find(r => r.id === eventDetail?.recording_id) || recordings[0];
+
+  // Load event first, then recordings by view_id
   useEffect(() => {
-    const fetchData = async () => {
+    const load = async () => {
       setLoading(true);
       setError('');
       try {
-        const data = await client.fetchEventById(id);
-        setEventDetail(data);
+        const evt = await client.fetchEventById(id);
+        setEventDetail(evt);
+        const recs = await client.fetchRecordings(evt.view_id).catch(() => [] as RecordingResponse[]);
+        setRecordings(recs);
       } catch (e) {
         setError(e instanceof Error ? e.message : '事件不存在');
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
+    load();
   }, [id]);
+
+  // flv.js player
+  useEffect(() => {
+    if (!activeRecording || !videoRef.current) return;
+    if (playerRef.current) { playerRef.current.destroy(); playerRef.current = null; }
+
+    setVideoError('');
+    setPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+
+    const url = client.getRecordingStreamUrl(activeRecording.id);
+    const player = flvjs.createPlayer({
+      type: 'flv',
+      url,
+      isLive: true,         // stream mode avoids Range request issues
+      hasAudio: true,
+      hasVideo: true,
+    });
+    player.attachMediaElement(videoRef.current);
+    player.load();
+
+    player.on(flvjs.Events.ERROR, (_e: unknown) => {
+      const err = _e as Error;
+      console.error('[EventReplay] flv.js error', err?.message || err);
+      setVideoError('视频加载失败: ' + (err?.message || '未知错误'));
+    });
+    player.on(flvjs.Events.METADATA_ARRIVED, () => {
+      const p = player.play();
+      if (p) { p.then(() => setPlaying(true)).catch(() => setVideoError('播放失败')); }
+      else { setPlaying(true); }
+    });
+    playerRef.current = player;
+
+    return () => { player.destroy(); playerRef.current = null; };
+  }, [activeRecording?.id]);
+
+  // Time tracking
+  const onTimeUpdate = useCallback(() => {
+    const v = videoRef.current;
+    if (v) { setCurrentTime(v.currentTime); setDuration(v.duration || 0); }
+  }, []);
+  const onVideoEnded = useCallback(() => setPlaying(false), []);
+
+  const togglePlay = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) {
+      const p = v.play();
+      if (p) { p.then(() => setPlaying(true)).catch(() => {}); }
+      else { setPlaying(true); }
+    } else { v.pause(); setPlaying(false); }
+  }, []);
+
+  const seekTo = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const bar = progressRef.current;
+    const v = videoRef.current;
+    if (!bar || !v || !duration) return;
+    const rect = bar.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    v.currentTime = ratio * duration;
+    setCurrentTime(v.currentTime);
+  }, [duration]);
+
+  const fmt = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  };
+  const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   const handleMark = async (action: 'resolved' | 'false-alarm') => {
     if (action === 'resolved') await markHandled(id);
     else await markFalseAlarm(id);
   };
-
-  const goBack = () => {
-    if (from) navigate(from);
-    else navigate('/main');
-  };
+  const goBack = () => { if (from) navigate(from); else navigate('/main'); };
 
   if (loading) {
     return (
@@ -77,28 +156,49 @@ export default function EventReplay() {
 
   return (
     <div style={{ display: 'flex', height: '100%', gap: 'var(--space-4)', padding: 'var(--space-4)' }}>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
-        background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,.06)', overflow: 'hidden', position: 'relative' }}>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', color: 'var(--text-disabled)' }}>
-          <Camera size={80} />
-          <div style={{ fontSize: 28, fontWeight: 'var(--font-bold)', color: 'var(--text-secondary)' }}>
-            视图 {eventDetail.view_id} · 事件回放
+      {/* Video area */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-surface)',
+        borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,.06)', overflow: 'hidden', position: 'relative' }}>
+        {activeRecording ? (
+          videoError ? (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', color: 'var(--color-danger)' }}>
+              <AlertTriangle size={48} />
+              <div>{videoError}</div>
+            </div>
+          ) : (
+            <>
+              <video ref={videoRef} style={{ flex: 1, width: '100%', background: '#000', objectFit: 'contain' }}
+                onTimeUpdate={onTimeUpdate} onEnded={onVideoEnded} onClick={togglePlay} />
+              {!playing && (
+                <div onClick={togglePlay} style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.3)', cursor: 'pointer' }}>
+                  <Play size={64} style={{ color: '#fff', opacity: .8 }} />
+                </div>
+              )}
+            </>
+          )
+        ) : (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', color: 'var(--text-disabled)' }}>
+            <Camera size={80} />
+            <div style={{ fontSize: 28, fontWeight: 'var(--font-bold)', color: 'var(--text-secondary)' }}>视图 {eventDetail.view_id} · 事件回放</div>
+            <div style={{ fontSize: 'var(--text-lg)' }}>告警 #{id}（无录制文件）</div>
           </div>
-          <div style={{ fontSize: 'var(--text-lg)', color: 'var(--text-disabled)' }}>
-            告警 #{id}
-          </div>
-        </div>
+        )}
+
+        {/* Progress bar */}
         <div style={{ padding: 'var(--space-4) var(--space-6)' }}>
-          <div style={{ position: 'relative', height: 6, background: 'var(--bg-elevated)', borderRadius: 3 }}>
-            <div style={{ position: 'absolute', left: 0, top: 0, height: 6, width: '25%', background: 'var(--color-info)', borderRadius: 3 }} />
-            <div style={{ position: 'absolute', left: '25%', top: -5, width: 16, height: 16, borderRadius: '50%', background: '#fff', border: '2px solid var(--color-info)', transform: 'translateX(-50%)' }} />
+          <div ref={progressRef} onClick={seekTo}
+            style={{ position: 'relative', height: 6, background: 'var(--bg-elevated)', borderRadius: 3, cursor: activeRecording ? 'pointer' : 'default' }}>
+            <div style={{ position: 'absolute', left: 0, top: 0, height: 6, width: `${pct}%`, background: 'var(--color-info)', borderRadius: 3, transition: 'width .1s linear' }} />
+            <div style={{ position: 'absolute', left: `${pct}%`, top: -5, width: 16, height: 16, borderRadius: '50%', background: '#fff', border: '2px solid var(--color-info)', transform: 'translateX(-50%)', transition: 'left .1s linear' }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-1)', fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
-            <span>00:12</span><span>02:45</span>
+            <span>{activeRecording ? fmt(currentTime) : '--:--'}</span>
+            <span>{activeRecording ? fmt(duration) : '--:--'}</span>
           </div>
         </div>
       </div>
 
+      {/* Side panel */}
       <div style={{ width: 360, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
         <div style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)', border: '1px solid rgba(255,255,255,.06)' }}>
           <div style={{ padding: 'var(--space-4)', background: 'var(--color-warning-dim)', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-4)', textAlign: 'center' }}>
@@ -108,22 +208,18 @@ export default function EventReplay() {
             <div>发生时间：<span style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{eventDetail.timestamp}</span></div>
             <div>关联视图：<span style={{ color: 'var(--text-primary)', cursor: 'pointer' }} onClick={() => navigate(`/view/${eventDetail.view_id}`, { state: { from: `/replay/${id}` } })}>视图 {eventDetail.view_id}</span></div>
             <div>异常定义：<Badge level="neutral">#{eventDetail.exception_id}</Badge></div>
-            <div style={{ marginTop: 'var(--space-2)', padding: 'var(--space-3)', background: 'var(--bg-canvas)', borderRadius: 'var(--radius-sm)',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {activeRecording && <div>录制时长：<span style={{ color: 'var(--text-primary)' }}>{activeRecording.start_time} ~ {activeRecording.end_time || '录制中'}</span></div>}
+            <div style={{ marginTop: 'var(--space-2)', padding: 'var(--space-3)', background: 'var(--bg-canvas)', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--text-secondary)' }}>处理状态</span>
               <Badge level="danger">未处理</Badge>
             </div>
           </div>
         </div>
-
         <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
           <Button variant="secondary" size="lg" style={{ flex: 1 }} onClick={() => handleMark('false-alarm')}>设为误报</Button>
           <Button variant="primary" size="lg" style={{ flex: 1 }} onClick={() => handleMark('resolved')}>设为已处理</Button>
         </div>
-
-        {from && (
-          <Button variant="ghost" size="sm" style={{ width: '100%' }} onClick={goBack}>返回</Button>
-        )}
+        {from && <Button variant="ghost" size="sm" style={{ width: '100%' }} onClick={goBack}>返回</Button>}
       </div>
     </div>
   );
