@@ -1,28 +1,50 @@
-import { useState } from 'react';
-import { Plus, Trash2, Edit3, Shield, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Plus, Trash2, Edit3, Shield, X, AlertTriangle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Panel } from '../components/ui/Panel';
-import { seedUsers } from '../api/seed';
+import { Skeleton } from '../components/ui/Skeleton';
+import * as client from '../api/client';
 import type { UserResponse } from '../api/types';
 
 export default function UserManagement() {
-  const [users, setUsers] = useState<UserResponse[]>(seedUsers);
+  const [users, setUsers] = useState<UserResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [selected, setSelected] = useState<number | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showRole, setShowRole] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await client.fetchUsers();
+      setUsers(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '加载失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchUsers(); }, []);
 
   const user = users.find(u => u.id === selected);
-  const nextId = () => Math.max(0, ...users.map(u => u.id)) + 1;
 
   // Add
-  const [addForm, setAddForm] = useState({ username: '', role: 'security_guard' });
-  const doAdd = () => {
-    if (!addForm.username.trim()) return;
-    const u: UserResponse = { id: nextId(), username: addForm.username, role: addForm.role, is_active: true };
-    setUsers(prev => [...prev, u]);
-    setShowAdd(false); setAddForm({ username: '', role: 'security_guard' });
+  const [addForm, setAddForm] = useState({ username: '', password: '', role: 'security_guard' });
+  const doAdd = async () => {
+    if (!addForm.username.trim() || !addForm.password) return;
+    setActionLoading(true);
+    try {
+      await client.createUser(addForm.username, addForm.password, addForm.role);
+      setShowAdd(false); setAddForm({ username: '', password: '', role: 'security_guard' });
+      await fetchUsers();
+    } catch { /* ignore */ }
+    finally { setActionLoading(false); }
   };
 
   // Edit
@@ -32,24 +54,41 @@ export default function UserManagement() {
     setEditForm({ username: user.username, role: user.role });
     setShowEdit(true);
   };
-  const doEdit = () => {
+  const doEdit = async () => {
     if (!user) return;
-    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, username: editForm.username || u.username, role: editForm.role } : u));
-    setShowEdit(false);
+    setActionLoading(true);
+    try {
+      if (editForm.role !== user.role) {
+        await client.updateUserRole(user.id, editForm.role);
+      }
+      setShowEdit(false);
+      await fetchUsers();
+    } catch { /* ignore */ }
+    finally { setActionLoading(false); }
   };
 
-  // Delete
-  const doDelete = () => {
+  // Deactivate
+  const doDeactivate = async () => {
     if (!user) return;
-    setUsers(prev => prev.filter(u => u.id !== user.id));
-    setSelected(null);
+    setActionLoading(true);
+    try {
+      await client.deactivateUser(user.id);
+      setSelected(null);
+      await fetchUsers();
+    } catch { /* ignore */ }
+    finally { setActionLoading(false); }
   };
 
   // Role change
-  const doSetRole = (role: string) => {
+  const doSetRole = async (role: string) => {
     if (!user) return;
-    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, role } : u));
-    setShowRole(false);
+    setActionLoading(true);
+    try {
+      await client.updateUserRole(user.id, role);
+      setShowRole(false);
+      await fetchUsers();
+    } catch { /* ignore */ }
+    finally { setActionLoading(false); }
   };
 
   const roleLabel: Record<string, string> = {
@@ -67,19 +106,31 @@ export default function UserManagement() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', overflow: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
           <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--font-bold)', color: 'var(--text-primary)' }}>用户管理</h2>
-          <Button variant="primary" icon={Plus} onClick={() => setShowAdd(true)}>添加用户</Button>
+          <Button variant="primary" icon={Plus} onClick={() => setShowAdd(true)} disabled={actionLoading}>添加用户</Button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 'var(--space-4)' }}>
-          {users.map(u => (
-            <Card key={u.id} hoverable selected={selected === u.id} onClick={() => setSelected(u.id)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 140 }}>
-              <span style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--font-semibold)', color: 'var(--text-primary)' }}>{u.username}</span>
-            </Card>
-          ))}
-          {Array.from({ length: Math.max(0, 9 - users.length) }, (_, i) => (
-            <Card key={`empty-${i}`} disabled style={{ minHeight: 140 }} />
-          ))}
-        </div>
+        {loading ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 'var(--space-4)' }}>
+            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} style={{ minHeight: 140 }} />)}
+          </div>
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: 'var(--space-8)', color: 'var(--color-danger)' }}>
+            <AlertTriangle size={32} style={{ marginBottom: 'var(--space-3)' }} />
+            <div style={{ marginBottom: 'var(--space-3)' }}>{error}</div>
+            <Button variant="secondary" onClick={fetchUsers}>重试</Button>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 'var(--space-4)' }}>
+            {users.map(u => (
+              <Card key={u.id} hoverable selected={selected === u.id} onClick={() => setSelected(u.id)}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 140 }}>
+                <span style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--font-semibold)', color: 'var(--text-primary)' }}>{u.username}</span>
+              </Card>
+            ))}
+            {users.length === 0 && (
+              <div style={{ gridColumn: '1/-1', textAlign: 'center', color: 'var(--text-disabled)', padding: 'var(--space-8)' }}>暂无用户</div>
+            )}
+          </div>
+        )}
       </div>
 
       <Panel open={!!user} onClose={() => setSelected(null)} title="用户详情">
@@ -90,9 +141,9 @@ export default function UserManagement() {
               <div style={{ fontSize: 'var(--text-lg)', color: 'var(--text-secondary)' }}>角色：<span style={{ color: 'var(--text-primary)', fontWeight: 'var(--font-medium)' }}>{roleLabel[user.role] || user.role}</span></div>
               <div style={{ fontSize: 'var(--text-lg)', color: 'var(--text-secondary)' }}>账号状态：<span style={{ color: user.is_active ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 'var(--font-medium)' }}>{user.is_active ? '正常' : '已停用'}</span></div>
             </div>
-            <Button variant="secondary" icon={Edit3} style={{ width: '100%' }} onClick={openEdit}>修改信息</Button>
-            <Button variant="secondary" icon={Shield} style={{ width: '100%' }} onClick={() => setShowRole(true)}>角色管理</Button>
-            <Button variant="danger" icon={Trash2} style={{ width: '100%' }} onClick={doDelete}>删除用户</Button>
+            <Button variant="secondary" icon={Edit3} style={{ width: '100%' }} onClick={openEdit} disabled={actionLoading}>修改信息</Button>
+            <Button variant="secondary" icon={Shield} style={{ width: '100%' }} onClick={() => setShowRole(true)} disabled={actionLoading}>角色管理</Button>
+            <Button variant="danger" icon={Trash2} style={{ width: '100%' }} onClick={doDeactivate} disabled={actionLoading}>停用用户</Button>
           </div>
         )}
       </Panel>
@@ -100,10 +151,11 @@ export default function UserManagement() {
       {showAdd && (
         <Modal onClose={() => setShowAdd(false)} title="添加用户">
           <input style={inputStyle} placeholder="用户名" value={addForm.username} onChange={e => setAddForm(f => ({ ...f, username: e.target.value }))} />
+          <input style={inputStyle} type="password" placeholder="密码" value={addForm.password} onChange={e => setAddForm(f => ({ ...f, password: e.target.value }))} />
           <select style={inputStyle} value={addForm.role} onChange={e => setAddForm(f => ({ ...f, role: e.target.value }))}>
             <option value="security_guard">安全员</option><option value="manager">管理员</option><option value="operator">运维员</option>
           </select>
-          <Button variant="primary" style={{ width: '100%' }} onClick={doAdd}>确认添加</Button>
+          <Button variant="primary" style={{ width: '100%' }} onClick={doAdd} disabled={actionLoading}>确认添加</Button>
         </Modal>
       )}
 
@@ -113,7 +165,7 @@ export default function UserManagement() {
           <select style={inputStyle} value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>
             <option value="security_guard">安全员</option><option value="manager">管理员</option><option value="operator">运维员</option>
           </select>
-          <Button variant="primary" style={{ width: '100%' }} onClick={doEdit}>保存修改</Button>
+          <Button variant="primary" style={{ width: '100%' }} onClick={doEdit} disabled={actionLoading}>保存修改</Button>
         </Modal>
       )}
 

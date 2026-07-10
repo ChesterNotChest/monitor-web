@@ -1,8 +1,7 @@
 /**
  * 类型化 API 客户端 —— 函数签名对齐全量 server REST 端点。
  *
- * 本阶段所有函数体为 stub：列表类返回空数据，变更类 throw "Not implemented"。
- * Server API 就绪后只需替换函数体。
+ * 所有函数通过 fetch() 调用 server API，自动注入 JWT token。
  */
 
 import { config } from './config';
@@ -14,41 +13,108 @@ import type {
   DashboardTrends,
   DetectionTypeCreate,
   DetectionTypeResponse,
+  EventListResponse,
+  EventResponse,
   ExceptionCreate,
   ExceptionResponse,
+  ExceptionStatsItem,
   FenceCreate,
   FenceResponse,
   LogEntry,
   LogListResponse,
   LoginRequest,
   LoginResponse,
+  NodeHealthResponse,
+  NodeResponse,
   PersonCreate,
   PersonListResponse,
   PersonResponse,
   PersonUpdate,
+  RecordingResponse,
   ReportResponse,
+  TrendItem,
   UserResponse,
+  VideoDeviceResponse,
+  AudioDeviceResponse,
+  ViewCreateRequest,
   ViewResponse,
 } from './types';
 
 const API = config.apiBase;
 
 // ══════════════════════════════════════════════
+// Helpers
+// ══════════════════════════════════════════════
+
+export class ApiError extends Error {
+  status: number;
+  detail: string;
+
+  constructor(status: number, detail: string) {
+    super(`${status}: ${detail}`);
+    this.name = 'ApiError';
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+function authHeaders(): HeadersInit {
+  const token = localStorage.getItem('access-token');
+  if (token) {
+    return { Authorization: `Bearer ${token}` };
+  }
+  return {};
+}
+
+async function baseFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...authHeaders(),
+    ...(options?.headers as Record<string, string> | undefined),
+  };
+
+  const res = await fetch(`${API}${path}`, { ...options, headers });
+
+  if (res.status === 401) {
+    // Global 401 handling: clear auth state
+    localStorage.removeItem('access-token');
+    localStorage.removeItem('current-user');
+  }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new ApiError(res.status, body.detail || res.statusText);
+  }
+
+  if (res.status === 204) return undefined as T;
+  return res.json();
+}
+
+/** Build query string from an object, skipping undefined/null values */
+function qs(params: Record<string, string | number | boolean | undefined | null>): string {
+  const parts = Object.entries(params)
+    .filter(([, v]) => v !== undefined && v !== null)
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
+  return parts.length ? `?${parts.join('&')}` : '';
+}
+
+// ══════════════════════════════════════════════
 // Auth
 // ══════════════════════════════════════════════
 
-export async function login(body: LoginRequest): Promise<LoginResponse | null> {
-  // TODO: POST /auth/login
-  return null;
+export async function login(body: LoginRequest): Promise<LoginResponse> {
+  return baseFetch<LoginResponse>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }
 
 export async function logout(): Promise<void> {
-  // TODO: POST /auth/logout
+  await baseFetch<{ ok: boolean }>('/auth/logout', { method: 'POST' });
 }
 
-export async function fetchCurrentUser(): Promise<UserResponse | null> {
-  // TODO: GET /auth/me
-  return null;
+export async function fetchCurrentUser(): Promise<UserResponse> {
+  return baseFetch<UserResponse>('/auth/me');
 }
 
 // ══════════════════════════════════════════════
@@ -56,18 +122,15 @@ export async function fetchCurrentUser(): Promise<UserResponse | null> {
 // ══════════════════════════════════════════════
 
 export async function fetchAlerts(page = 1, pageSize = 20): Promise<AlertListResponse> {
-  // TODO: GET /alerts?page=&page_size=
-  return { items: [], total: 0, page, page_size: pageSize };
+  return baseFetch<AlertListResponse>(`/alerts${qs({ page, page_size: pageSize })}`);
 }
 
 export async function markAlertHandled(id: number): Promise<void> {
-  // TODO: PUT /alerts/:id/handle
-  throw new Error(`PUT /alerts/${id}/handle — not implemented`);
+  await baseFetch<{ ok: boolean }>(`/alerts/${id}/handle`, { method: 'PUT' });
 }
 
 export async function markAlertFalseAlarm(id: number): Promise<void> {
-  // TODO: PUT /alerts/:id/false-alarm
-  throw new Error(`PUT /alerts/${id}/false-alarm — not implemented`);
+  await baseFetch<{ ok: boolean }>(`/alerts/${id}/false-alarm`, { method: 'PUT' });
 }
 
 // ══════════════════════════════════════════════
@@ -75,23 +138,25 @@ export async function markAlertFalseAlarm(id: number): Promise<void> {
 // ══════════════════════════════════════════════
 
 export async function fetchAlertGroups(): Promise<AlertGroupResponse[]> {
-  // TODO: GET /alert-groups
-  return [];
+  return baseFetch<AlertGroupResponse[]>('/alert-groups');
 }
 
 export async function createAlertGroup(body: AlertGroupCreate): Promise<AlertGroupResponse> {
-  // TODO: POST /alert-groups
-  throw new Error('POST /alert-groups — not implemented');
+  return baseFetch<AlertGroupResponse>('/alert-groups', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }
 
 export async function updateAlertGroup(id: number, body: AlertGroupCreate): Promise<AlertGroupResponse> {
-  // TODO: PUT /alert-groups/:id
-  throw new Error(`PUT /alert-groups/${id} — not implemented`);
+  return baseFetch<AlertGroupResponse>(`/alert-groups/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
 }
 
 export async function deleteAlertGroup(id: number): Promise<void> {
-  // TODO: DELETE /alert-groups/:id
-  throw new Error(`DELETE /alert-groups/${id} — not implemented`);
+  await baseFetch<void>(`/alert-groups/${id}`, { method: 'DELETE' });
 }
 
 // ══════════════════════════════════════════════
@@ -99,37 +164,42 @@ export async function deleteAlertGroup(id: number): Promise<void> {
 // ══════════════════════════════════════════════
 
 export async function fetchDashboardStats(): Promise<DashboardStats> {
-  // TODO: GET /dashboard/stats
-  return { total_views: 0, active_alerts: 0, online_nodes: 0, total_devices: 0 };
+  return baseFetch<DashboardStats>('/dashboard/stats');
 }
 
 export async function fetchDashboardTrends(): Promise<DashboardTrends> {
-  // TODO: GET /dashboard/trends
-  return { points: [] };
+  return baseFetch<DashboardTrends>('/dashboard/trends');
 }
 
 // ══════════════════════════════════════════════
-// Devices / Nodes
+// Nodes
 // ══════════════════════════════════════════════
 
-export async function fetchNodes(): Promise<unknown[]> {
-  // TODO: GET /nodes
-  return [];
+export async function fetchNodes(): Promise<NodeResponse[]> {
+  const data = await baseFetch<{ nodes: NodeResponse[] }>('/nodes');
+  return data.nodes;
 }
 
-export async function fetchNodeVideos(nodeId: number): Promise<unknown[]> {
-  // TODO: GET /nodes/:node_id/videos
-  return [];
+export async function fetchNodeVideos(nodeId: number): Promise<VideoDeviceResponse[]> {
+  const data = await baseFetch<{ videos: VideoDeviceResponse[] }>(`/nodes/${nodeId}/videos`);
+  return data.videos;
 }
 
-export async function fetchNodeAudios(nodeId: number): Promise<unknown[]> {
-  // TODO: GET /nodes/:node_id/audios
-  return [];
+export async function fetchNodeAudios(nodeId: number): Promise<AudioDeviceResponse[]> {
+  const data = await baseFetch<{ audios: AudioDeviceResponse[] }>(`/nodes/${nodeId}/audios`);
+  return data.audios;
 }
 
-export async function fetchNodeHealth(nodeId: number): Promise<unknown> {
-  // TODO: GET /devices/nodes/:node_id/health
-  return null;
+// ══════════════════════════════════════════════
+// Devices
+// ══════════════════════════════════════════════
+
+export async function fetchNodeHealth(nodeId: number): Promise<NodeHealthResponse> {
+  return baseFetch<NodeHealthResponse>(`/devices/nodes/${nodeId}/health`);
+}
+
+export async function onboardDevice(nodeId: number): Promise<void> {
+  await baseFetch<{ ok: boolean }>(`/devices/nodes/${nodeId}/onboard`, { method: 'POST' });
 }
 
 // ══════════════════════════════════════════════
@@ -137,33 +207,69 @@ export async function fetchNodeHealth(nodeId: number): Promise<unknown> {
 // ══════════════════════════════════════════════
 
 export async function fetchEntityTypes(): Promise<DetectionTypeResponse[]> {
-  // TODO: GET /detection/entity-types
-  return [];
-}
-
-export async function fetchActionTypes(): Promise<DetectionTypeResponse[]> {
-  // TODO: GET /detection/action-types
-  return [];
-}
-
-export async function fetchSoundTypes(): Promise<DetectionTypeResponse[]> {
-  // TODO: GET /detection/sound-types
-  return [];
+  return baseFetch<DetectionTypeResponse[]>('/detection/entity-types');
 }
 
 export async function createEntityType(body: DetectionTypeCreate): Promise<DetectionTypeResponse> {
-  // TODO: POST /detection/entity-types
-  throw new Error('POST /detection/entity-types — not implemented');
+  return baseFetch<DetectionTypeResponse>('/detection/entity-types', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateEntityType(id: number, body: DetectionTypeCreate): Promise<DetectionTypeResponse> {
+  return baseFetch<DetectionTypeResponse>(`/detection/entity-types/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteEntityType(id: number): Promise<void> {
+  await baseFetch<void>(`/detection/entity-types/${id}`, { method: 'DELETE' });
+}
+
+export async function fetchActionTypes(): Promise<DetectionTypeResponse[]> {
+  return baseFetch<DetectionTypeResponse[]>('/detection/action-types');
 }
 
 export async function createActionType(body: DetectionTypeCreate): Promise<DetectionTypeResponse> {
-  // TODO: POST /detection/action-types
-  throw new Error('POST /detection/action-types — not implemented');
+  return baseFetch<DetectionTypeResponse>('/detection/action-types', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateActionType(id: number, body: DetectionTypeCreate): Promise<DetectionTypeResponse> {
+  return baseFetch<DetectionTypeResponse>(`/detection/action-types/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteActionType(id: number): Promise<void> {
+  await baseFetch<void>(`/detection/action-types/${id}`, { method: 'DELETE' });
+}
+
+export async function fetchSoundTypes(): Promise<DetectionTypeResponse[]> {
+  return baseFetch<DetectionTypeResponse[]>('/detection/sound-types');
 }
 
 export async function createSoundType(body: DetectionTypeCreate): Promise<DetectionTypeResponse> {
-  // TODO: POST /detection/sound-types
-  throw new Error('POST /detection/sound-types — not implemented');
+  return baseFetch<DetectionTypeResponse>('/detection/sound-types', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateSoundType(id: number, body: DetectionTypeCreate): Promise<DetectionTypeResponse> {
+  return baseFetch<DetectionTypeResponse>(`/detection/sound-types/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteSoundType(id: number): Promise<void> {
+  await baseFetch<void>(`/detection/sound-types/${id}`, { method: 'DELETE' });
 }
 
 // ══════════════════════════════════════════════
@@ -171,23 +277,25 @@ export async function createSoundType(body: DetectionTypeCreate): Promise<Detect
 // ══════════════════════════════════════════════
 
 export async function fetchExceptions(): Promise<ExceptionResponse[]> {
-  // TODO: GET /exceptions
-  return [];
+  return baseFetch<ExceptionResponse[]>('/exceptions');
 }
 
 export async function createException(body: ExceptionCreate): Promise<ExceptionResponse> {
-  // TODO: POST /exceptions
-  throw new Error('POST /exceptions — not implemented');
+  return baseFetch<ExceptionResponse>('/exceptions', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }
 
 export async function updateException(id: number, body: ExceptionCreate): Promise<ExceptionResponse> {
-  // TODO: PUT /exceptions/:id
-  throw new Error(`PUT /exceptions/${id} — not implemented`);
+  return baseFetch<ExceptionResponse>(`/exceptions/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
 }
 
 export async function deleteException(id: number): Promise<void> {
-  // TODO: DELETE /exceptions/:id
-  throw new Error(`DELETE /exceptions/${id} — not implemented`);
+  await baseFetch<void>(`/exceptions/${id}`, { method: 'DELETE' });
 }
 
 // ══════════════════════════════════════════════
@@ -195,23 +303,25 @@ export async function deleteException(id: number): Promise<void> {
 // ══════════════════════════════════════════════
 
 export async function fetchFences(): Promise<FenceResponse[]> {
-  // TODO: GET /fences
-  return [];
+  return baseFetch<FenceResponse[]>('/fences');
 }
 
 export async function createFence(body: FenceCreate): Promise<FenceResponse> {
-  // TODO: POST /fences
-  throw new Error('POST /fences — not implemented');
+  return baseFetch<FenceResponse>('/fences', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }
 
 export async function updateFence(id: number, body: FenceCreate): Promise<FenceResponse> {
-  // TODO: PUT /fences/:id
-  throw new Error(`PUT /fences/${id} — not implemented`);
+  return baseFetch<FenceResponse>(`/fences/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
 }
 
 export async function deleteFence(id: number): Promise<void> {
-  // TODO: DELETE /fences/:id
-  throw new Error(`DELETE /fences/${id} — not implemented`);
+  await baseFetch<void>(`/fences/${id}`, { method: 'DELETE' });
 }
 
 // ══════════════════════════════════════════════
@@ -219,13 +329,11 @@ export async function deleteFence(id: number): Promise<void> {
 // ══════════════════════════════════════════════
 
 export async function fetchLogs(page = 1, pageSize = 20): Promise<LogListResponse> {
-  // TODO: GET /logs?page=&page_size=
-  return { items: [], total: 0, page, page_size: pageSize };
+  return baseFetch<LogListResponse>(`/logs${qs({ page, page_size: pageSize })}`);
 }
 
-export async function fetchLogById(id: number): Promise<LogEntry | null> {
-  // TODO: GET /logs/:id
-  return null;
+export async function fetchLogById(id: number): Promise<LogEntry> {
+  return baseFetch<LogEntry>(`/logs/${id}`);
 }
 
 // ══════════════════════════════════════════════
@@ -233,37 +341,35 @@ export async function fetchLogById(id: number): Promise<LogEntry | null> {
 // ══════════════════════════════════════════════
 
 export async function fetchWeeklyReport(): Promise<ReportResponse> {
-  // TODO: GET /reports/weekly
-  return { period: '', total_alerts: 0, by_severity: [], top_exceptions: [] };
+  return baseFetch<ReportResponse>('/reports/weekly');
 }
 
 export async function fetchMonthlyReport(): Promise<ReportResponse> {
-  // TODO: GET /reports/monthly
-  return { period: '', total_alerts: 0, by_severity: [], top_exceptions: [] };
+  return baseFetch<ReportResponse>('/reports/monthly');
 }
 
 // ══════════════════════════════════════════════
 // Views
 // ══════════════════════════════════════════════
 
-export async function createView(audioId: number, videoId: number): Promise<ViewResponse> {
-  // TODO: POST /views?audio_id=&video_id=
-  throw new Error('POST /views — not implemented');
+export async function createView(body: ViewCreateRequest): Promise<ViewResponse> {
+  return baseFetch<ViewResponse>('/views', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }
 
 export async function fetchViews(): Promise<ViewResponse[]> {
-  // TODO: GET /views
-  return [];
+  const data = await baseFetch<{ views: ViewResponse[] }>('/views');
+  return data.views;
 }
 
-export async function fetchViewById(id: number): Promise<ViewResponse | null> {
-  // TODO: GET /views/:id
-  return null;
+export async function fetchViewById(id: number): Promise<ViewResponse> {
+  return baseFetch<ViewResponse>(`/views/${id}`);
 }
 
 export async function deleteView(id: number): Promise<void> {
-  // TODO: DELETE /views/:id
-  throw new Error(`DELETE /views/${id} — not implemented`);
+  await baseFetch<void>(`/views/${id}`, { method: 'DELETE' });
 }
 
 // ══════════════════════════════════════════════
@@ -271,33 +377,50 @@ export async function deleteView(id: number): Promise<void> {
 // ══════════════════════════════════════════════
 
 export async function fetchPersons(page = 1, pageSize = 20): Promise<PersonListResponse> {
-  // TODO: GET /persons?page=&page_size=
-  return { items: [], total: 0, page, page_size: pageSize };
+  return baseFetch<PersonListResponse>(`/persons${qs({ page, page_size: pageSize })}`);
 }
 
-export async function fetchPersonById(id: number): Promise<PersonResponse | null> {
-  // TODO: GET /persons/:id
-  return null;
+export async function fetchPersonById(id: number): Promise<PersonResponse> {
+  return baseFetch<PersonResponse>(`/persons/${id}`);
 }
 
 export async function createPerson(body: PersonCreate): Promise<PersonResponse> {
-  // TODO: POST /persons
-  throw new Error('POST /persons — not implemented');
+  return baseFetch<PersonResponse>('/persons', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }
 
 export async function updatePerson(id: number, body: PersonUpdate): Promise<PersonResponse> {
-  // TODO: PUT /persons/:id
-  throw new Error(`PUT /persons/${id} — not implemented`);
+  return baseFetch<PersonResponse>(`/persons/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
 }
 
 export async function deletePerson(id: number): Promise<void> {
-  // TODO: DELETE /persons/:id
-  throw new Error(`DELETE /persons/${id} — not implemented`);
+  await baseFetch<void>(`/persons/${id}`, { method: 'DELETE' });
 }
 
 export async function uploadPersonAvatar(id: number, file: File): Promise<PersonResponse> {
-  // TODO: POST /persons/:id/avatar
-  throw new Error(`POST /persons/${id}/avatar — not implemented`);
+  const token = localStorage.getItem('access-token');
+  const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+  // Do NOT set Content-Type — browser sets it with boundary for multipart
+
+  const formData = new FormData();
+  formData.append('avatar', file);
+
+  const res = await fetch(`${API}/persons/${id}/avatar`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new ApiError(res.status, body.detail || res.statusText);
+  }
+  return res.json();
 }
 
 // ══════════════════════════════════════════════
@@ -305,21 +428,68 @@ export async function uploadPersonAvatar(id: number, file: File): Promise<Person
 // ══════════════════════════════════════════════
 
 export async function fetchUsers(): Promise<UserResponse[]> {
-  // TODO: GET /users
-  return [];
+  return baseFetch<UserResponse[]>('/users');
 }
 
 export async function createUser(username: string, password: string, role: string): Promise<UserResponse> {
-  // TODO: POST /users?username=&password=&role=
-  throw new Error('POST /users — not implemented');
+  return baseFetch<UserResponse>(`/users${qs({ username, password, role })}`, { method: 'POST' });
 }
 
 export async function updateUserRole(id: number, role: string): Promise<UserResponse> {
-  // TODO: PUT /users/:id/role?role=
-  throw new Error(`PUT /users/${id}/role — not implemented`);
+  return baseFetch<UserResponse>(`/users/${id}/role${qs({ role })}`, { method: 'PUT' });
 }
 
 export async function deactivateUser(id: number): Promise<void> {
-  // TODO: PUT /users/:id/deactivate
-  throw new Error(`PUT /users/${id}/deactivate — not implemented`);
+  await baseFetch<void>(`/users/${id}/deactivate`, { method: 'PUT' });
+}
+
+// ══════════════════════════════════════════════
+// Events
+// ══════════════════════════════════════════════
+
+export interface EventQuery {
+  view_id?: number | null;
+  start?: string | null;
+  end?: string | null;
+  page?: number;
+  page_size?: number;
+}
+
+export async function fetchEvents(query: EventQuery = {}): Promise<EventListResponse> {
+  const params: Record<string, string | number | boolean | undefined | null> = {
+    view_id: query.view_id,
+    start: query.start,
+    end: query.end,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  };
+  return baseFetch<EventListResponse>(`/events${qs(params)}`);
+}
+
+export async function fetchEventById(id: number): Promise<EventResponse> {
+  return baseFetch<EventResponse>(`/events/${id}`);
+}
+
+export async function fetchExceptionStats(start?: string | null, end?: string | null): Promise<ExceptionStatsItem[]> {
+  return baseFetch<ExceptionStatsItem[]>(`/events/stats/by-exception${qs({ start, end })}`);
+}
+
+export async function fetchEventTrend(
+  granularity: 'hour' | 'day' | 'month' = 'day',
+  start?: string | null,
+  end?: string | null,
+): Promise<TrendItem[]> {
+  return baseFetch<TrendItem[]>(`/events/stats/trend${qs({ granularity, start, end })}`);
+}
+
+// ══════════════════════════════════════════════
+// Replay
+// ══════════════════════════════════════════════
+
+export async function fetchRecordings(viewId: number, start?: string | null, end?: string | null): Promise<RecordingResponse[]> {
+  return baseFetch<RecordingResponse[]>(`/views/${viewId}/recordings${qs({ start, end })}`);
+}
+
+export function getRecordingStreamUrl(id: number): string {
+  return `${API}/recordings/${id}/stream`;
 }
