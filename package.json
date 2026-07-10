@@ -11,8 +11,11 @@
   },
   "dependencies": {
     "flv.js": "^1.6.2",
+    "framer-motion": "^12.42.2",
+    "lucide-react": "^1.24.0",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^7.18.1"
   },
   "devDependencies": {
     "@types/node": "^24.13.2",

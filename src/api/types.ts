@@ -313,6 +313,7 @@ export interface EventResponse {
   id: number;
   view_id: number;
   exception_id: number;
+  recording_id: number | null;
   timestamp: string;
 }
 

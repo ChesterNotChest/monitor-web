@@ -7,8 +7,9 @@ interface ButtonProps {
   loading?: boolean;
   disabled?: boolean;
   icon?: LucideIcon;
-  onClick?: () => void;
+  onClick?: (() => void) | (() => Promise<void>);
   children: ReactNode;
+  style?: React.CSSProperties;
 }
 
 const btnStyles: Record<string, React.CSSProperties> = {
