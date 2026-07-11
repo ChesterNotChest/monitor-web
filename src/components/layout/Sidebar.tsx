@@ -88,16 +88,21 @@ export function Sidebar() {
                 borderLeft:active?'3px solid var(--color-info)':'3px solid transparent',
                 fontSize:'var(--text-base)',transition:'background 120ms ease, color 120ms ease, border-color 120ms ease',
                 textDecoration:'none',whiteSpace:'nowrap',cursor:'pointer',boxSizing:'border-box',textAlign:'left' }}>
-              <item.icon size={20} style={{flexShrink:0}} />
-              <span style={{display:collapsed?'none':undefined}}>
-                <span style={{flex:1,textAlign:'left'}}>{item.label}</span>
-                {item.badge != null && item.badge > 0 && (
-                  <span style={{background:'var(--color-danger)',color:'#fff',fontSize:11,fontWeight:'var(--font-bold)',
-                    minWidth:18,height:18,borderRadius:'var(--radius-full)',display:'flex',alignItems:'center',
-                    justifyContent:'center',padding:'0 5px',lineHeight:1}}>{item.badge}
-                  </span>
+              <div style={{position:'relative',flexShrink:0}}>
+                <item.icon size={20} />
+                {collapsed && item.badge != null && item.badge > 0 && (
+                  <span style={{position:'absolute',top:-6,right:-8,background:'var(--color-danger)',color:'#fff',
+                    fontSize:10,fontWeight:'var(--font-bold)',minWidth:16,height:16,borderRadius:'var(--radius-full)',
+                    display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px',lineHeight:1,
+                    border:'2px solid var(--bg-surface)'}}>{item.badge}</span>
                 )}
-              </span>
+              </div>
+              {!collapsed && <span style={{textAlign:'left',flex:1}}>{item.label}</span>}
+              {!collapsed && item.badge != null && item.badge > 0 && (
+                <span style={{background:'var(--color-danger)',color:'#fff',fontSize:11,fontWeight:'var(--font-bold)',
+                  minWidth:18,height:18,borderRadius:'var(--radius-full)',display:'flex',alignItems:'center',
+                  justifyContent:'center',padding:'0 5px',lineHeight:1,flexShrink:0}}>{item.badge}</span>
+              )}
             </button>
           );
         })}
