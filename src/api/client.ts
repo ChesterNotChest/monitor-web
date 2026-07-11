@@ -303,25 +303,25 @@ export async function deleteException(id: number): Promise<void> {
 // ══════════════════════════════════════════════
 
 export async function fetchFences(): Promise<FenceResponse[]> {
-  return baseFetch<FenceResponse[]>('/fences');
+  return baseFetch<FenceResponse[]>('/fences/');
 }
 
 export async function createFence(body: FenceCreate): Promise<FenceResponse> {
-  return baseFetch<FenceResponse>('/fences', {
+  return baseFetch<FenceResponse>('/fences/', {
     method: 'POST',
     body: JSON.stringify(body),
   });
 }
 
 export async function updateFence(id: number, body: FenceCreate): Promise<FenceResponse> {
-  return baseFetch<FenceResponse>(`/fences/${id}`, {
+  return baseFetch<FenceResponse>(`/fences/${id}/`, {
     method: 'PUT',
     body: JSON.stringify(body),
   });
 }
 
 export async function deleteFence(id: number): Promise<void> {
-  await baseFetch<void>(`/fences/${id}`, { method: 'DELETE' });
+  await baseFetch<void>(`/fences/${id}/`, { method: 'DELETE' });
 }
 
 // ══════════════════════════════════════════════
@@ -353,14 +353,14 @@ export async function fetchMonthlyReport(): Promise<ReportResponse> {
 // ══════════════════════════════════════════════
 
 export async function createView(body: ViewCreateRequest): Promise<ViewResponse> {
-  return baseFetch<ViewResponse>('/views', {
+  return baseFetch<ViewResponse>('/views/', {
     method: 'POST',
     body: JSON.stringify(body),
   });
 }
 
 export async function fetchViews(): Promise<ViewResponse[]> {
-  const data = await baseFetch<{ views: ViewResponse[] }>('/views');
+  const data = await baseFetch<{ views: ViewResponse[] }>('/views/');
   return data.views;
 }
 
@@ -369,7 +369,7 @@ export async function fetchViewById(id: number): Promise<ViewResponse> {
 }
 
 export async function deleteView(id: number): Promise<void> {
-  await baseFetch<void>(`/views/${id}`, { method: 'DELETE' });
+  await baseFetch<void>(`/views/${id}/`, { method: 'DELETE' });
 }
 
 // ══════════════════════════════════════════════
