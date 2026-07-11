@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScrollText, Users, UserSquare, Monitor, Settings, Camera, AlertTriangle } from 'lucide-react';
+import { ScrollText, Users, UserSquare, Monitor, Settings, Camera, AlertTriangle, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useAlerts } from '../context/AlertContext';
+import { useCameras } from '../context/CameraContext';
 import * as client from '../api/client';
 import type { DashboardStats, ViewResponse, DashboardTrends } from '../api/types';
 import { SeverityLabel, SeverityBadgeLevel } from '../api/enums';
@@ -18,12 +19,18 @@ const quickActions = [
 export default function MainDashboard() {
   const navigate = useNavigate();
   const { alerts } = useAlerts();
+  const { cameras: contextCameras, updateCamera, removeCamera } = useCameras();
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [views, setViews] = useState<ViewResponse[]>([]);
   const [trends, setTrends] = useState<DashboardTrends | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const allViews = [...views, ...contextCameras.filter(c => !views.find(v => v.id === Number(c.id.split('-')[1]) || v.name === c.name))];
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameText, setRenameText] = useState('');
+  const startRename = (id: string, name: string) => { setRenamingId(id); setRenameText(name); };
+  const finishRename = (id: string) => { if (renameText.trim()) updateCamera(id, { name: renameText.trim() }); setRenamingId(null); };
 
   const fetchData = async () => {
     setLoading(true);
@@ -103,15 +110,15 @@ export default function MainDashboard() {
       {/* Views Grid + Actions + Alerts Panel */}
       <div style={{display:'flex',gap:'var(--space-4)',flex:1,minHeight:0}}>
         <div style={{flex:1,display:'flex',flexDirection:'column',gap:'var(--space-4)',minWidth:0}}>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'var(--space-4)',flex:1,overflowY:'auto',alignContent:'start'}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'var(--space-4)',overflowY:'auto',alignContent:'start',maxHeight:340}}>
             {loading ? (
               Array.from({length:2}).map((_,i)=>(
                 <Skeleton key={i} style={{height:160,borderRadius:'var(--radius-md)'}} />
               ))
-            ) : views.length === 0 && !error ? (
+            ) : views.length === 0 && allViews.length === 0 && !error ? (
               <div style={{gridColumn:'1/-1',textAlign:'center',color:'var(--text-disabled)',padding:'var(--space-8)'}}>暂无视图数据</div>
             ) : (
-              views.map(view=>(
+              allViews.map(view=>(
                 <div key={view.id}
                   onClick={()=>goTo(`/view/${view.id}`,{from:'/main'})}
                   style={{display:'flex',flexDirection:'column',background:'var(--bg-surface)',
@@ -121,8 +128,25 @@ export default function MainDashboard() {
                     <Camera size={32} style={{color:'var(--text-disabled)'}}/>
                   </div>
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
-                    padding:'var(--space-3) var(--space-4)',borderTop:'1px solid rgba(255,255,255,.04)'}}>
-                    <span style={{fontSize:'var(--text-sm)',fontWeight:'var(--font-medium)',color:'var(--text-primary)'}}>视图 {view.id}</span>
+                    padding:'var(--space-3) var(--space-4)',borderTop:'1px solid rgba(255,255,255,.04)'}}
+                    onClick={e=>e.stopPropagation()}>
+                    {renamingId===String(view.id) ? (
+                      <input autoFocus value={renameText}
+                        onChange={e=>setRenameText(e.target.value)}
+                        onKeyDown={e=>{if(e.key==='Enter')finishRename(String(view.id));if(e.key==='Escape')setRenamingId(null);}}
+                        onBlur={()=>finishRename(String(view.id))}
+                        style={{flex:1,padding:'4px 8px',background:'var(--bg-canvas)',border:'1px solid var(--color-info)',
+                          borderRadius:'var(--radius-sm)',color:'var(--text-primary)',fontSize:'var(--text-sm)',outline:'none'}}
+                      />
+                    ) : (
+                      <span style={{fontSize:'var(--text-sm)',fontWeight:'var(--font-medium)',color:'var(--text-primary)',display:'flex',alignItems:'center',gap:4,flex:1,minWidth:0}}>
+                        <span className="truncate" style={{flex:1}}>{(view as any).name || `视图 ${view.id}`}</span>
+                        <Pencil size={12} style={{color:'var(--text-disabled)',cursor:'pointer',flexShrink:0}}
+                          onClick={()=>startRename(String(view.id),(view as any).name||'')} />
+                        <Trash2 size={12} style={{color:'var(--text-disabled)',cursor:'pointer',flexShrink:0}}
+                          onClick={e=>{e.stopPropagation();removeCamera(String(view.id));}} />
+                      </span>
+                    )}
                     <Button variant="ghost" size="sm">进入视图</Button>
                   </div>
                 </div>
