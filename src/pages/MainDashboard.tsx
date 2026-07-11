@@ -1,20 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScrollText, Users, UserSquare, Monitor, Settings, Camera, AlertTriangle, Pencil, Trash2 } from 'lucide-react';
+import { Camera, Monitor, AlertTriangle, Pencil, Trash2, PlusCircle, Video, Mic, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
+import { Card } from '../components/ui/Card';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useAlerts } from '../context/AlertContext';
 import { useCameras } from '../context/CameraContext';
 import * as client from '../api/client';
 import type { DashboardStats, ViewResponse, DashboardTrends } from '../api/types';
 import { SeverityLabel, SeverityBadgeLevel } from '../api/enums';
-
-const quickActions = [
-  { label:'查看日志',icon:ScrollText,path:'/log' },{ label:'用户管理',icon:Users,path:'/users' },
-  { label:'人物管理',icon:UserSquare,path:'/characters' },{ label:'设备信息',icon:Monitor,path:'/equipment' },
-  { label:'异常设置',icon:Settings,path:'/exception-settings' },
-];
 
 export default function MainDashboard() {
   const navigate = useNavigate();
@@ -31,6 +26,36 @@ export default function MainDashboard() {
   const [renameText, setRenameText] = useState('');
   const startRename = (id: string, name: string) => { setRenamingId(id); setRenameText(name); };
   const finishRename = (id: string) => { if (renameText.trim()) updateCamera(id, { name: renameText.trim() }); setRenamingId(null); };
+
+  // Create view flow
+  const [showCreate, setShowCreate] = useState(false);
+  const [devices, setDevices] = useState<{videos: {id:number;name:string;nodeId:number;streaming:boolean}[], audios: {id:number;name:string;nodeId:number;streaming:boolean}[]}>({videos:[],audios:[]});
+  const [createStep, setCreateStep] = useState<'select' | 'creating'>('select');
+  const [selVideo, setSelVideo] = useState<number | null>(null);
+  const [selAudio, setSelAudio] = useState<number | null>(null);
+  const [createErr, setCreateErr] = useState('');
+
+  const openCreate = async () => {
+    setShowCreate(true); setCreateStep('select'); setSelVideo(null); setSelAudio(null); setCreateErr('');
+    try {
+      const nodes = await client.fetchNodes();
+      const vProms = nodes.map(n => client.fetchNodeVideos(n.id).catch(() => []));
+      const aProms = nodes.map(n => client.fetchNodeAudios(n.id).catch(() => []));
+      const vAll = (await Promise.all(vProms)).flat();
+      const aAll = (await Promise.all(aProms)).flat();
+      setDevices({ videos: vAll, audios: aAll });
+    } catch { setCreateErr('加载设备列表失败'); }
+  };
+
+  const doCreate = async () => {
+    if (selVideo === null || selAudio === null) return;
+    setCreateStep('creating'); setCreateErr('');
+    try {
+      const newView = await client.createView({ video_id: selVideo, audio_id: selAudio });
+      setShowCreate(false);
+      navigate(`/view/${newView.id}`, { state: { from: '/main' } });
+    } catch (e) { setCreateErr(e instanceof Error ? e.message : '创建失败'); setCreateStep('select'); }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -110,7 +135,11 @@ export default function MainDashboard() {
       {/* Views Grid + Actions + Alerts Panel */}
       <div style={{display:'flex',gap:'var(--space-4)',flex:1,minHeight:0}}>
         <div style={{flex:1,display:'flex',flexDirection:'column',gap:'var(--space-4)',minWidth:0}}>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'var(--space-4)',overflowY:'auto',alignContent:'start',maxHeight:340}}>
+          <div style={{display:'flex',alignItems:'center',gap:'var(--space-4)',marginBottom:'var(--space-2)'}}>
+            <span style={{fontSize:'var(--text-base)',fontWeight:'var(--font-semibold)',color:'var(--text-primary)'}}>监控视图</span>
+            <Button variant="primary" size="sm" icon={PlusCircle} onClick={openCreate}>创建监控视图</Button>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'var(--space-4)',overflowY:'auto',alignContent:'start',maxHeight:440}}>
             {loading ? (
               Array.from({length:2}).map((_,i)=>(
                 <Skeleton key={i} style={{height:160,borderRadius:'var(--radius-md)'}} />
@@ -144,24 +173,16 @@ export default function MainDashboard() {
                         <Pencil size={12} style={{color:'var(--text-disabled)',cursor:'pointer',flexShrink:0}}
                           onClick={()=>startRename(String(view.id),(view as any).name||'')} />
                         <Trash2 size={12} style={{color:'var(--text-disabled)',cursor:'pointer',flexShrink:0}}
-                          onClick={e=>{e.stopPropagation();removeCamera(String(view.id));}} />
+                          onClick={e=>{e.stopPropagation();
+                            if (typeof view.id === 'number') client.deleteView(view.id).then(fetchData).catch(()=>{});
+                            else removeCamera(String(view.id));
+                          }} />
                       </span>
                     )}
-                    <Button variant="ghost" size="sm">进入视图</Button>
                   </div>
                 </div>
               ))
             )}
-          </div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:'var(--space-3)',paddingTop:'var(--space-2)'}}>
-            {quickActions.map(qa=>(
-              <div key={qa.label} onClick={()=>navigate(qa.path)}
-                style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'var(--space-2)',
-                  padding:'var(--space-4)',background:'var(--bg-surface)',borderRadius:'var(--radius-md)',
-                  border:'1px solid rgba(255,255,255,.06)',cursor:'pointer',color:'var(--text-secondary)'}}>
-                <qa.icon size={22}/><span style={{fontSize:'var(--text-sm)'}}>{qa.label}</span>
-              </div>
-            ))}
           </div>
         </div>
 
@@ -183,6 +204,67 @@ export default function MainDashboard() {
           {pendingAlerts.length===0&&<div style={{color:'var(--text-disabled)',textAlign:'center',padding:'var(--space-8)'}}>暂无未处理告警</div>}
         </div>
       </div>
+
+      {/* Create View Modal */}
+      {showCreate && (
+        <>
+          <div onClick={() => setShowCreate(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 70 }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 80,
+            background: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid rgba(255,255,255,.1)',
+            padding: 'var(--space-6)', minWidth: 480, maxHeight: '80vh', overflowY: 'auto', boxShadow: 'var(--shadow-lg)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
+              <h3 style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--font-bold)', color: 'var(--text-primary)' }}>创建监控视图</h3>
+              <div style={{ cursor: 'pointer', color: 'var(--text-secondary)' }} onClick={() => setShowCreate(false)}>✕</div>
+            </div>
+
+            {createStep === 'creating' ? (
+              <div style={{ textAlign: 'center', padding: 'var(--space-10)' }}>
+                <Loader2 size={32} style={{ animation: 'spin 1s linear infinite', color: 'var(--color-info)', marginBottom: 'var(--space-3)' }} />
+                <div style={{ color: 'var(--text-secondary)' }}>正在创建视图，等待节点推流...</div>
+                <div style={{ color: 'var(--text-disabled)', fontSize: 'var(--text-sm)', marginTop: 'var(--space-1)' }}>约需 8 秒</div>
+              </div>
+            ) : (
+              <>
+                {createErr && <div style={{ color: 'var(--color-danger)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-3)', textAlign: 'center' }}>{createErr}</div>}
+
+                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-medium)', color: 'var(--text-primary)', marginBottom: 'var(--space-2)' }}>选择视频设备</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', marginBottom: 'var(--space-4)', maxHeight: 160, overflowY: 'auto' }}>
+                  {devices.videos.length === 0 && <div style={{ color: 'var(--text-disabled)', padding: 'var(--space-2)' }}>无可用视频设备</div>}
+                  {devices.videos.map(d => (
+                    <Card key={d.id} selected={selVideo === d.id} hoverable onClick={() => setSelVideo(d.id)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-2) var(--space-3)' }}>
+                      <Video size={14} style={{ color: d.streaming ? 'var(--color-success)' : 'var(--text-disabled)' }} />
+                      <span style={{ flex: 1, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>{d.name}</span>
+                      <span style={{ fontSize: 'var(--text-xs)', color: d.streaming ? 'var(--color-success)' : 'var(--text-disabled)' }}>
+                        {d.streaming ? '推送中' : '空闲'}
+                      </span>
+                    </Card>
+                  ))}
+                </div>
+
+                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-medium)', color: 'var(--text-primary)', marginBottom: 'var(--space-2)' }}>选择音频设备</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', marginBottom: 'var(--space-4)', maxHeight: 160, overflowY: 'auto' }}>
+                  {devices.audios.length === 0 && <div style={{ color: 'var(--text-disabled)', padding: 'var(--space-2)' }}>无可用音频设备</div>}
+                  {devices.audios.map(d => (
+                    <Card key={d.id} selected={selAudio === d.id} hoverable onClick={() => setSelAudio(d.id)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-2) var(--space-3)' }}>
+                      <Mic size={14} style={{ color: d.streaming ? 'var(--color-success)' : 'var(--text-disabled)' }} />
+                      <span style={{ flex: 1, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>{d.name}</span>
+                      <span style={{ fontSize: 'var(--text-xs)', color: d.streaming ? 'var(--color-success)' : 'var(--text-disabled)' }}>
+                        {d.streaming ? '推送中' : '空闲'}
+                      </span>
+                    </Card>
+                  ))}
+                </div>
+
+                <Button variant="primary" style={{ width: '100%' }} disabled={selVideo === null || selAudio === null} onClick={doCreate}>
+                  创建视图
+                </Button>
+              </>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

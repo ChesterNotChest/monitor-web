@@ -18,17 +18,7 @@ interface CameraCtx {
 
 const Ctx = createContext<CameraCtx>({ cameras: [], addCamera: () => {}, updateCamera: () => {}, removeCamera: () => {} });
 
-const initialCameras: CameraView[] = [
-  { id:'cam-01',name:'视图01-1号车间入口',status:'online' },
-  { id:'cam-02',name:'视图02-2号库房通道',status:'online' },
-  { id:'cam-03',name:'视图03-3号生产线A区',status:'online' },
-  { id:'cam-04',name:'视图04-4号装配线',status:'online' },
-  { id:'cam-05',name:'视图05-5号原料仓库',status:'online' },
-  { id:'cam-06',name:'视图06-6号成品区',status:'online' },
-  { id:'cam-07',name:'视图07-7号停车场',status:'online' },
-  { id:'cam-08',name:'视图08-8号围墙东段',status:'offline' },
-  { id:'cam-09',name:'视图09-9号办公楼入口',status:'offline' },
-];
+const initialCameras: CameraView[] = [];
 
 export function CameraProvider({ children }: { children: ReactNode }) {
   const [cameras, setCameras] = useState<CameraView[]>(initialCameras);
