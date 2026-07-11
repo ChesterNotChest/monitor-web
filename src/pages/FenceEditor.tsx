@@ -25,7 +25,7 @@ export default function FenceEditor() {
   const id = Number(viewId) || 0;
 
   // WHEP live player
-  const { status: whepStatus, error: whepError } = useWhepPlayer(videoRef, view?.webrtc_url);
+  const { status: whepStatus } = useWhepPlayer(videoRef, view?.webrtc_url);
 
   const [addForm, setAddForm] = useState<FenceCreate>({
     name: '', view_id: id,
@@ -75,22 +75,35 @@ export default function FenceEditor() {
   }, [fences, selectedId]);
 
   const doAdd = async () => {
-    if (!addForm.name.trim()) return;
+    console.log('[FenceEditor] doAdd called, name=', addForm.name, 'id=', id);
+    if (!addForm.name.trim()) {
+      setError('请输入围栏名称');
+      return;
+    }
+    setError('');
     setActionLoading(true);
     try {
+      console.log('[FenceEditor] calling createFence...');
       await client.createFence({ ...addForm, view_id: id });
+      console.log('[FenceEditor] createFence OK');
       setShowAdd(false);
       setAddForm({ name: '', view_id: id, coords: [[0, 0], [200, 0], [200, 150], [0, 150]], dwell_time: 10, density: 0.6, leave_frames: 5 });
       await fetchData();
-    } catch { /* ignore */ }
-    finally { setActionLoading(false); }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '添加围栏失败');
+    } finally { setActionLoading(false); }
   };
 
   const doDelete = async (fid: number) => {
+    setError('');
     setActionLoading(true);
-    try { await client.deleteFence(fid); if (selectedId === fid) setSelectedId(null); await fetchData(); }
-    catch { /* ignore */ }
-    finally { setActionLoading(false); }
+    try {
+      await client.deleteFence(fid);
+      if (selectedId === fid) setSelectedId(null);
+      await fetchData();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '删除围栏失败');
+    } finally { setActionLoading(false); }
   };
 
   const inputStyle: React.CSSProperties = {
@@ -115,11 +128,11 @@ export default function FenceEditor() {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', color: 'var(--text-disabled)' }}>
             <Camera size={80} />
             <div style={{ fontSize: 28, fontWeight: 'var(--font-bold)', color: 'var(--text-secondary)' }}>视图 {viewId}</div>
-            <div style={{ fontSize: 'var(--text-sm)' }}>{whepError || 'webrtc_url 不可用 — 请检查 SRS 是否启动'}</div>
+            <div style={{ fontSize: 'var(--text-sm)' }}>WebRTC 连接中...</div>
           </div>
         )}
         <div style={{ padding: 'var(--space-4)', textAlign: 'center', fontSize: 'var(--text-sm)', color: 'var(--text-disabled)' }}>
-          摄像机: {viewId} {whepStatus === 'connecting' ? '· 连接中...' : ''}
+          视图 {viewId} {whepStatus === 'connecting' ? '· 连接中...' : whepStatus === 'playing' ? '· 直播中' : ''}
         </div>
       </div>
 
@@ -129,13 +142,12 @@ export default function FenceEditor() {
           padding: 'var(--space-4)', border: '1px solid rgba(255,255,255,.06)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--font-semibold)' }}>围栏区域</span>
-            <Button variant="primary" size="sm" icon={Plus} onClick={() => setShowAdd(true)} disabled={actionLoading}>新增</Button>
+            <Button variant="primary" size="sm" icon={Plus} onClick={() => { setError(''); setShowAdd(true); }} disabled={actionLoading}>新增</Button>
           </div>
 
           {error && (
-            <div style={{ textAlign: 'center', padding: 'var(--space-4)', color: 'var(--color-danger)' }}>
-              <AlertTriangle size={24} /><div>{error}</div>
-              <Button variant="secondary" size="sm" onClick={fetchData}>重试</Button>
+            <div style={{ textAlign: 'center', padding: 'var(--space-2)', color: 'var(--color-danger)', fontSize: 'var(--text-sm)' }}>
+              <AlertTriangle size={16} style={{ verticalAlign: 'middle', marginRight: 4 }} />{error}
             </div>
           )}
 
@@ -160,42 +172,38 @@ export default function FenceEditor() {
         </div>
 
         <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-          <Button variant="danger" onClick={() => navigate(-1)}>返回</Button>
+          <Button variant="secondary" onClick={() => navigate(-1)}>返回</Button>
         </div>
       </div>
 
       {/* Add fence modal */}
       {showAdd && (
-        <Modal onClose={() => setShowAdd(false)} title="新增围栏">
-          <input style={inputStyle} placeholder="围栏名称" value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
-            <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>停留时限(s)</label>
-              <input style={inputStyle} type="number" value={addForm.dwell_time} onChange={e => setAddForm(f => ({ ...f, dwell_time: Number(e.target.value) }))} /></div>
-            <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>密度阈值</label>
-              <input style={inputStyle} type="number" step="0.1" min="0" max="1" value={addForm.density} onChange={e => setAddForm(f => ({ ...f, density: Number(e.target.value) }))} /></div>
+        <>
+          <div onClick={() => setShowAdd(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 70 }} />
+          <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 80,
+            background: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid rgba(255,255,255,.1)',
+            padding: 'var(--space-6)', minWidth: 400, boxShadow: 'var(--shadow-lg)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
+              <h3 style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--font-bold)', color: 'var(--text-primary)' }}>新增围栏</h3>
+              <div style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 'var(--text-lg)' }} onClick={() => setShowAdd(false)}>✕</div>
+            </div>
+            <input style={inputStyle} placeholder="围栏名称（必填）" value={addForm.name}
+              onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))}
+              onKeyDown={e => e.key === 'Enter' && doAdd()} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
+              <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>停留时限(s)</label>
+                <input style={inputStyle} type="number" value={addForm.dwell_time} onChange={e => setAddForm(f => ({ ...f, dwell_time: Number(e.target.value) }))} /></div>
+              <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>密度阈值</label>
+                <input style={inputStyle} type="number" step="0.1" min="0" max="1" value={addForm.density} onChange={e => setAddForm(f => ({ ...f, density: Number(e.target.value) }))} /></div>
+            </div>
+            <div style={{ marginBottom: 'var(--space-3)' }}><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>离开判定帧数</label>
+              <input style={inputStyle} type="number" value={addForm.leave_frames} onChange={e => setAddForm(f => ({ ...f, leave_frames: Number(e.target.value) }))} /></div>
+            <Button variant="primary" style={{ width: '100%' }} onClick={doAdd} disabled={actionLoading || !addForm.name.trim()}>
+              {actionLoading ? '添加中...' : '确认添加'}
+            </Button>
           </div>
-          <div style={{ marginBottom: 'var(--space-3)' }}><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>离开判定帧数</label>
-            <input style={inputStyle} type="number" value={addForm.leave_frames} onChange={e => setAddForm(f => ({ ...f, leave_frames: Number(e.target.value) }))} /></div>
-          <Button variant="primary" style={{ width: '100%' }} onClick={doAdd} disabled={actionLoading}>确认添加</Button>
-        </Modal>
+        </>
       )}
     </div>
-  );
-}
-
-function Modal({ onClose, title, children }: { onClose: () => void; title: string; children: React.ReactNode }) {
-  return (
-    <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 70 }} />
-      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 80,
-        background: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid rgba(255,255,255,.1)',
-        padding: 'var(--space-6)', minWidth: 400, boxShadow: 'var(--shadow-lg)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
-          <h3 style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--font-bold)', color: 'var(--text-primary)' }}>{title}</h3>
-          <div style={{ cursor: 'pointer', color: 'var(--text-secondary)' }} onClick={onClose}>✕</div>
-        </div>
-        {children}
-      </div>
-    </>
   );
 }
