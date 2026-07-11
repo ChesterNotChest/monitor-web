@@ -1,13 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { Camera, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Camera, AlertTriangle, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useAlerts } from '../context/AlertContext';
+import { useWhepPlayer } from '../hooks/useWhepPlayer';
 import * as client from '../api/client';
 import type { ViewResponse } from '../api/types';
-import flvjs from 'flv.js';
 
 export default function LiveMonitor() {
   const { cameraId } = useParams<{ cameraId: string }>();
@@ -17,9 +17,7 @@ export default function LiveMonitor() {
 
   const [view, setView] = useState<ViewResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [flvError, setFlvError] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
-  const playerRef = useRef<flvjs.Player | null>(null);
 
   const viewId = cameraId ? Number(cameraId) : null;
   const viewAlerts = alerts.filter(a => a.view_id === viewId);
@@ -29,48 +27,18 @@ export default function LiveMonitor() {
   useEffect(() => {
     if (viewId === null) return;
     setLoading(true);
-    setFlvError('');
     client.fetchViewById(viewId)
       .then(setView)
       .catch(() => setView(null))
       .finally(() => setLoading(false));
   }, [viewId]);
 
-  // FLV player setup / teardown
-  useEffect(() => {
-    if (!view?.flv_url || !videoRef.current) return;
+  // WHEP live player
+  const { status: whepStatus, error: whepError, connect: reconnectWhep } =
+    useWhepPlayer(videoRef, view?.webrtc_url);
 
-    // Destroy previous player if any
-    if (playerRef.current) {
-      playerRef.current.destroy();
-      playerRef.current = null;
-    }
-
-    setFlvError('');
-    const player = flvjs.createPlayer({
-      type: 'flv',
-      url: view.flv_url,
-      isLive: true,
-    });
-
-    player.attachMediaElement(videoRef.current);
-    player.load();
-
-    player.on(flvjs.Events.ERROR, () => {
-      setFlvError('视频流加载失败');
-    });
-
-    player.on(flvjs.Events.METADATA_ARRIVED, () => {
-      player.play().catch(() => setFlvError('播放失败'));
-    });
-
-    playerRef.current = player;
-
-    return () => {
-      player.destroy();
-      playerRef.current = null;
-    };
-  }, [view?.flv_url]);
+  const liveAvailable = view?.webrtc_url != null && whepStatus !== 'error';
+  const showPlaceholder = !view?.webrtc_url || whepStatus === 'error';
 
   return (
     <div style={{ display: 'flex', height: '100%', gap: 'var(--space-4)', padding: 'var(--space-4)' }}>
@@ -78,7 +46,7 @@ export default function LiveMonitor() {
         background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,.06)', position: 'relative', overflow: 'hidden' }}>
 
         {/* LIVE badge */}
-        {view?.flv_url && !flvError && (
+        {whepStatus === 'playing' && (
           <div style={{ position: 'absolute', top: 'var(--space-4)', left: 'var(--space-4)',
             background: 'var(--color-danger)', color: '#fff', padding: '2px 10px', borderRadius: 'var(--radius-sm)',
             fontSize: 'var(--text-xs)', fontWeight: 'var(--font-bold)', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 'var(--space-1)', zIndex: 10 }}>
@@ -86,47 +54,49 @@ export default function LiveMonitor() {
           </div>
         )}
 
-        {/* Video player or placeholder */}
+        {/* Connecting indicator */}
+        {whepStatus === 'connecting' && (
+          <div style={{ position: 'absolute', top: 'var(--space-4)', left: 'var(--space-4)', zIndex: 10,
+            background: 'rgba(0,0,0,.6)', color: '#fff', padding: '4px 12px', borderRadius: 'var(--radius-sm)',
+            fontSize: 'var(--text-xs)', display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', border: '2px solid #fff', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
+            连接中...
+          </div>
+        )}
+
+        {/* Video or placeholder */}
         {loading ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Skeleton style={{ width: '100%', height: '100%', borderRadius: 0 }} />
           </div>
-        ) : view?.flv_url ? (
-          flvError ? (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', color: 'var(--color-danger)' }}>
-              <AlertTriangle size={48} />
-              <div>{flvError}</div>
-              <Button variant="secondary" size="sm" onClick={() => {
-                setFlvError('');
-                if (playerRef.current) {
-                  playerRef.current.destroy();
-                  playerRef.current = null;
-                }
-                if (view?.flv_url && videoRef.current) {
-                  const player = flvjs.createPlayer({ type: 'flv', url: view.flv_url, isLive: true });
-                  player.attachMediaElement(videoRef.current);
-                  player.load();
-                  player.on(flvjs.Events.ERROR, () => setFlvError('视频流加载失败'));
-                  player.on(flvjs.Events.METADATA_ARRIVED, () => player.play().catch(() => setFlvError('播放失败')));
-                  playerRef.current = player;
-                }
-              }}>
-                <RefreshCw size={16} /> 重试
-              </Button>
-            </div>
-          ) : (
-            <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }} controls muted />
-          )
-        ) : (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-4)', color: 'var(--text-disabled)' }}>
-            <Camera size={80} />
-            <div style={{ fontSize: 28, fontWeight: 'var(--font-bold)', color: 'var(--text-secondary)' }}>
-              {view ? `视图 ${view.id}` : `视图 ${cameraId}`}
-            </div>
+        ) : showPlaceholder ? (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', color: 'var(--text-disabled)', padding: 'var(--space-6)' }}>
+            {whepStatus === 'error' ? (
+              <>
+                <AlertTriangle size={48} style={{ color: 'var(--color-danger)' }} />
+                <div style={{ color: 'var(--color-danger)', fontSize: 'var(--text-lg)' }}>{whepError}</div>
+                <Button variant="secondary" size="sm" onClick={reconnectWhep}><RefreshCw size={16} /> 重试</Button>
+              </>
+            ) : (
+              <>
+                <Camera size={80} />
+                <div style={{ fontSize: 28, fontWeight: 'var(--font-bold)', color: 'var(--text-secondary)' }}>
+                  {view ? `视图 ${view.id}` : `视图 ${cameraId}`}
+                </div>
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-disabled)', textAlign: 'center', maxWidth: 360 }}>
+                  {view?.webrtc_url === null
+                    ? <><WifiOff size={16} style={{ marginRight: 4 }} />直播不可用：SRS 流媒体服务未启动，或 webrtc_url 未配置。<br />检查 SRS 是否运行在 :8080，Server 是否设置了 DEBUG_WEB_STREAM=false</>
+                    : '正在等待直播信号...'}
+                </div>
+              </>
+            )}
           </div>
+        ) : (
+          <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }} muted playsInline autoPlay />
         )}
       </div>
 
+      {/* Right sidebar — alerts + actions */}
       <div style={{ width: 360, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
         <div style={{ flex: 1, background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)',
           padding: 'var(--space-4)', border: '1px solid rgba(255,255,255,.06)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
@@ -151,7 +121,7 @@ export default function LiveMonitor() {
         </div>
 
         <div style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)', border: '1px solid rgba(255,255,255,.06)' }}>
-          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 'var(--space-3)' }}>固定可用操作</div>
+          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 'var(--space-3)' }}>操作</div>
           <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
             <Button variant="secondary" onClick={() => navigate(`/view/${cameraId}/edit`, { state: { from: location.pathname } })}>编辑电子围栏</Button>
             <Button variant="primary">手动录制</Button>
