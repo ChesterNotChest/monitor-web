@@ -23,14 +23,25 @@ export default function DeviceInfo() {
   const [viewName, setViewName] = useState('');
   const [pickerMode, setPickerMode] = useState<'video' | 'audio' | null>(null);
 
-  // Flat device lists
-  const allVideos = nodes.flatMap(n => getNodeDevices(n.id,'video').map(d=>({...d,nodeId:n.id,nodeName:`Node ${n.id}`})));
-  const allAudios = nodes.flatMap(n => getNodeDevices(n.id,'audio').map(d=>({...d,nodeId:n.id,nodeName:`Node ${n.id}`})));
+  // Real device lists from API (fetched on mount, refreshed when nodes change)
+  const [allVideos, setAllVideos] = useState<{id:number;name:string;nodeId:number;nodeName:string;streaming:boolean}[]>([]);
+  const [allAudios, setAllAudios] = useState<{id:number;name:string;nodeId:number;nodeName:string;streaming:boolean}[]>([]);
 
   const fetchData = async () => {
     setLoading(true); setError('');
-    try { const data = await client.fetchNodes(); setNodes(data); }
-    catch (e) { setError(e instanceof Error ? e.message : '加载失败'); }
+    try {
+      const nodeList = await client.fetchNodes();
+      setNodes(nodeList);
+      // Fetch devices for each node
+      const vAll: any[] = []; const aAll: any[] = [];
+      await Promise.all(nodeList.map(async n => {
+        const v = await client.fetchNodeVideos(n.id).catch(() => []);
+        const a = await client.fetchNodeAudios(n.id).catch(() => []);
+        v.forEach((d: any) => vAll.push({...d, nodeId: n.id, nodeName: `Node ${n.id}`}));
+        a.forEach((d: any) => aAll.push({...d, nodeId: n.id, nodeName: `Node ${n.id}`}));
+      }));
+      setAllVideos(vAll); setAllAudios(aAll);
+    } catch (e) { setError(e instanceof Error ? e.message : '加载失败'); }
     finally { setLoading(false); }
   };
 
@@ -216,30 +227,23 @@ export default function DeviceInfo() {
   );
 }
 
-interface DeviceItem { name: string; status: 'online' | 'offline' | 'alert'; }
-
-function getNodeDevices(nodeId: number, type: 'video' | 'audio'): DeviceItem[] {
-  if (type === 'video') {
-    if (nodeId <= 3) return [
-      { name: `Camera-${nodeId}A`, status: 'online' },
-      { name: `Camera-${nodeId}B`, status: 'online' },
-    ];
-    return [{ name: `Camera-${nodeId}`, status: nodeId % 2 === 0 ? 'online' : 'offline' }];
-  }
-  if (nodeId <= 2) return [
-    { name: `Mic-${nodeId}A`, status: 'online' },
-    { name: `Mic-${nodeId}B`, status: 'online' },
-  ];
-  return [
-    { name: `Mic-${nodeId}A`, status: 'online' },
-    { name: `Mic-${nodeId}B`, status: nodeId % 3 === 0 ? 'alert' : 'online' },
-  ];
-}
-
 function DeviceNodeCard({ node }: { node: NodeResponse }) {
   const [collapsed, setCollapsed] = useState(false);
-  const isAbnormal = !node.is_connected;
+  const [videos, setVideos] = useState<{id:number;name:string;streaming:boolean}[]>([]);
+  const [audios, setAudios] = useState<{id:number;name:string;streaming:boolean}[]>([]);
+  const [devLoading, setDevLoading] = useState(false);
 
+  useEffect(() => {
+    if (!collapsed) {
+      setDevLoading(true);
+      Promise.all([
+        client.fetchNodeVideos(node.id).catch(() => []),
+        client.fetchNodeAudios(node.id).catch(() => []),
+      ]).then(([v, a]) => { setVideos(v); setAudios(a); setDevLoading(false); });
+    }
+  }, [collapsed, node.id]);
+
+  const isAbnormal = !node.is_connected;
   return (
     <div style={{
       background: isAbnormal ? 'var(--color-danger-dim)' : 'var(--bg-canvas)',
@@ -250,8 +254,7 @@ function DeviceNodeCard({ node }: { node: NodeResponse }) {
       <div onClick={() => setCollapsed(c => !c)} style={{
         display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
         padding: 'var(--space-4)', cursor: 'pointer', fontSize: 'var(--text-xl)',
-        fontWeight: 'var(--font-semibold)', color: 'var(--text-primary)',
-      }}>
+        fontWeight: 'var(--font-semibold)', color: 'var(--text-primary)' }}>
         {collapsed ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
         <span>Node {node.id}</span>
         <StatusDot status={node.is_connected ? 'online' : 'offline'} pulse={isAbnormal} size="sm" />
@@ -262,31 +265,34 @@ function DeviceNodeCard({ node }: { node: NodeResponse }) {
             <div>状态：<span style={{ color: node.is_connected ? 'var(--color-success)' : 'var(--color-danger)' }}>{node.is_connected ? '在线' : '离线'}</span></div>
             <div style={{marginTop:2}}>最后上线：<span style={{ color: 'var(--text-primary)' }}>{node.last_seen || '未知'}</span></div>
           </div>
-          {/* Video / Audio device groups */}
           <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
             <div style={{ flex: 1, background: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-3)' }}>
               <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)', marginBottom: 'var(--space-2)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Video size={14} /> Video
+                <Video size={14} /> Video ({videos.length})
               </div>
-              {getNodeDevices(node.id, 'video').map((d, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: 'var(--space-2) var(--space-3)', background: 'var(--bg-canvas)', borderRadius: 'var(--radius-sm)', marginBottom: 4 }}>
-                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>{d.name}</span>
-                  <StatusDot status={d.status} size="sm" />
-                </div>
-              ))}
+              {devLoading ? <Skeleton style={{ height: 30 }} /> :
+                videos.length === 0 ? <div style={{ color: 'var(--text-disabled)', fontSize: 'var(--text-xs)' }}>无设备</div> :
+                videos.map(d => (
+                  <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: 'var(--space-2) var(--space-3)', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)', marginBottom: 4 }}>
+                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>{d.name}</span>
+                    <StatusDot status={d.streaming ? 'online' : 'offline'} size="sm" />
+                  </div>
+                ))}
             </div>
             <div style={{ flex: 1, background: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-3)' }}>
               <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)', marginBottom: 'var(--space-2)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Mic size={14} /> Audio
+                <Mic size={14} /> Audio ({audios.length})
               </div>
-              {getNodeDevices(node.id, 'audio').map((d, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: 'var(--space-2) var(--space-3)', background: 'var(--bg-canvas)', borderRadius: 'var(--radius-sm)', marginBottom: 4 }}>
-                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>{d.name}</span>
-                  <StatusDot status={d.status} size="sm" />
-                </div>
-              ))}
+              {devLoading ? <Skeleton style={{ height: 30 }} /> :
+                audios.length === 0 ? <div style={{ color: 'var(--text-disabled)', fontSize: 'var(--text-xs)' }}>无设备</div> :
+                audios.map(d => (
+                  <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: 'var(--space-2) var(--space-3)', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)', marginBottom: 4 }}>
+                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>{d.name}</span>
+                    <StatusDot status={d.streaming ? 'online' : 'offline'} size="sm" />
+                  </div>
+                ))}
             </div>
           </div>
         </div>

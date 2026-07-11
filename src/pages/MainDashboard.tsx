@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, Monitor, AlertTriangle, Pencil, Trash2, PlusCircle, Video, Mic, Loader2 } from 'lucide-react';
+import { useWhepPlayer } from '../hooks/useWhepPlayer';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
@@ -148,39 +149,10 @@ export default function MainDashboard() {
               <div style={{gridColumn:'1/-1',textAlign:'center',color:'var(--text-disabled)',padding:'var(--space-8)'}}>暂无视图数据</div>
             ) : (
               allViews.map(view=>(
-                <div key={view.id}
-                  onClick={()=>goTo(`/view/${view.id}`,{from:'/main'})}
-                  style={{display:'flex',flexDirection:'column',background:'var(--bg-surface)',
-                    borderRadius:'var(--radius-md)',border:'1px solid rgba(255,255,255,.06)',overflow:'hidden',cursor:'pointer'}}>
-                  <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',
-                    background:'var(--bg-elevated)',minHeight:100}}>
-                    <Camera size={32} style={{color:'var(--text-disabled)'}}/>
-                  </div>
-                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
-                    padding:'var(--space-3) var(--space-4)',borderTop:'1px solid rgba(255,255,255,.04)'}}
-                    onClick={e=>e.stopPropagation()}>
-                    {renamingId===String(view.id) ? (
-                      <input autoFocus value={renameText}
-                        onChange={e=>setRenameText(e.target.value)}
-                        onKeyDown={e=>{if(e.key==='Enter')finishRename(String(view.id));if(e.key==='Escape')setRenamingId(null);}}
-                        onBlur={()=>finishRename(String(view.id))}
-                        style={{flex:1,padding:'4px 8px',background:'var(--bg-canvas)',border:'1px solid var(--color-info)',
-                          borderRadius:'var(--radius-sm)',color:'var(--text-primary)',fontSize:'var(--text-sm)',outline:'none'}}
-                      />
-                    ) : (
-                      <span style={{fontSize:'var(--text-sm)',fontWeight:'var(--font-medium)',color:'var(--text-primary)',display:'flex',alignItems:'center',gap:4,flex:1,minWidth:0}}>
-                        <span className="truncate" style={{flex:1}}>{(view as any).name || `视图 ${view.id}`}</span>
-                        <Pencil size={12} style={{color:'var(--text-disabled)',cursor:'pointer',flexShrink:0}}
-                          onClick={()=>startRename(String(view.id),(view as any).name||'')} />
-                        <Trash2 size={12} style={{color:'var(--text-disabled)',cursor:'pointer',flexShrink:0}}
-                          onClick={e=>{e.stopPropagation();
-                            if (typeof view.id === 'number') client.deleteView(view.id).then(fetchData).catch(()=>{});
-                            else removeCamera(String(view.id));
-                          }} />
-                      </span>
-                    )}
-                  </div>
-                </div>
+                <MiniViewCard key={view.id} view={view} renamingId={renamingId} renameText={renameText}
+                  startRename={startRename} finishRename={finishRename}
+                  removeCamera={removeCamera} fetchData={fetchData}
+                  onClick={()=>goTo(`/view/${view.id}`,{from:'/main'})} />
               ))
             )}
           </div>
@@ -334,6 +306,61 @@ function TrendChart({ points }: { points: { date: string; severity: string; coun
             );
           })}
         </svg>
+      </div>
+    </div>
+  );
+}
+
+// ── Mini view card with live video ──
+
+function MiniViewCard({ view, renamingId, renameText, startRename, finishRename, removeCamera, fetchData, onClick }: {
+  view: any; renamingId: string | null; renameText: string;
+  startRename: (id: string, name: string) => void; finishRename: (id: string) => void;
+  removeCamera: (id: string) => void; fetchData: () => void; onClick: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const webrtcUrl = (view as any).webrtc_url || `http://127.0.0.1:1985/rtc/v1/whep/?app=live&stream=${view.id}`;
+  const { status } = useWhepPlayer(videoRef, webrtcUrl);
+
+  return (
+    <div onClick={onClick}
+      style={{display:'flex',flexDirection:'column',background:'var(--bg-surface)',
+        borderRadius:'var(--radius-md)',border:'1px solid rgba(255,255,255,.06)',overflow:'hidden',cursor:'pointer'}}>
+      <div style={{flex:1,background:'var(--bg-elevated)',minHeight:100,position:'relative'}}>
+        <video ref={videoRef} style={{width:'100%',height:'100%',objectFit:'cover',background:'#000',
+          display: status==='playing'?'block':'none'}} muted playsInline autoPlay />
+        {status !== 'playing' && (
+          <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            {status === 'connecting' ? (
+              <Loader2 size={24} style={{animation:'spin 1s linear infinite',color:'var(--text-info)'}} />
+            ) : (
+              <Camera size={32} style={{color:'var(--text-disabled)'}} />
+            )}
+            <span style={{position:'absolute',bottom:4,fontSize:10,color:'var(--text-disabled)'}}>{status}</span>
+          </div>
+        )}
+        <span style={{position:'absolute',bottom:2,right:4,fontSize:9,color:'rgba(255,255,255,.3)',zIndex:5}}>{status}</span>
+      </div>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+        padding:'var(--space-3) var(--space-4)',borderTop:'1px solid rgba(255,255,255,.04)'}}
+        onClick={e=>e.stopPropagation()}>
+        {renamingId===String(view.id) ? (
+          <input autoFocus value={renameText}
+            onChange={e=>startRename(String(view.id), (e.target as HTMLInputElement).value)}
+            onKeyDown={e=>{if(e.key==='Enter')finishRename(String(view.id));if(e.key==='Escape'){e.currentTarget.blur();}}}
+            style={{flex:1,padding:'4px 8px',background:'var(--bg-canvas)',border:'1px solid var(--color-info)',
+              borderRadius:'var(--radius-sm)',color:'var(--text-primary)',fontSize:'var(--text-sm)',outline:'none'}} />
+        ) : (
+          <span style={{fontSize:'var(--text-sm)',fontWeight:'var(--font-medium)',color:'var(--text-primary)',display:'flex',alignItems:'center',gap:4,flex:1,minWidth:0}}>
+            <span className="truncate" style={{flex:1}}>{(view as any).name || `视图 ${view.id}`}</span>
+            <Pencil size={12} style={{color:'var(--text-disabled)',cursor:'pointer',flexShrink:0}} onClick={()=>startRename(String(view.id),(view as any).name||'')} />
+            <Trash2 size={12} style={{color:'var(--text-disabled)',cursor:'pointer',flexShrink:0}}
+              onClick={e=>{e.stopPropagation();
+                if (typeof view.id === 'number') client.deleteView(view.id).then(fetchData).catch(()=>{});
+                else removeCamera(String(view.id));
+              }} />
+          </span>
+        )}
       </div>
     </div>
   );

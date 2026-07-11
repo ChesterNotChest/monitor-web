@@ -6,6 +6,7 @@ import { Badge } from '../components/ui/Badge';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useAlerts } from '../context/AlertContext';
 import { useWhepPlayer } from '../hooks/useWhepPlayer';
+import { useFlvPlayer } from '../hooks/useFlvPlayer';
 import * as client from '../api/client';
 import type { ViewResponse } from '../api/types';
 
@@ -33,29 +34,31 @@ export default function LiveMonitor() {
       .finally(() => setLoading(false));
   }, [viewId]);
 
-  // WHEP live player
+  // WHEP live player (WebRTC — preferred, low latency)
   const { status: whepStatus, error: whepError, connect: reconnectWhep } =
     useWhepPlayer(videoRef, view?.webrtc_url);
 
-  const liveAvailable = view?.webrtc_url != null && whepStatus !== 'error';
-  const showPlaceholder = !view?.webrtc_url || whepStatus === 'error';
+  // FLV fallback — only activate when WHEP confirmed failed
+  const enableFlv = whepStatus === 'error';
+  const { status: flvStatus, error: flvError, connect: reconnectFlv } =
+    useFlvPlayer(videoRef, enableFlv ? view?.flv_url : null);
+
+  const effectiveStatus = enableFlv ? flvStatus : whepStatus;
+  const effectiveError = enableFlv ? flvError : whepError;
+  const effectiveReconnect = enableFlv ? reconnectFlv : reconnectWhep;
+
+  const showPlaceholder = (!view?.webrtc_url && !view?.flv_url) || effectiveStatus === 'error';
 
   return (
     <div style={{ display: 'flex', height: '100%', gap: 'var(--space-4)', padding: 'var(--space-4)' }}>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
         background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,.06)', position: 'relative', overflow: 'hidden' }}>
 
-        {/* LIVE badge */}
-        {whepStatus === 'playing' && (
-          <div style={{ position: 'absolute', top: 'var(--space-4)', left: 'var(--space-4)',
-            background: 'var(--color-danger)', color: '#fff', padding: '2px 10px', borderRadius: 'var(--radius-sm)',
-            fontSize: 'var(--text-xs)', fontWeight: 'var(--font-bold)', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 'var(--space-1)', zIndex: 10 }}>
-            <span style={{ width: 6, height: 6, background: '#fff', borderRadius: '50%', animation: 'pulse-ring 1.4s ease-out infinite' }} />LIVE
-          </div>
-        )}
+        {/* Time display */}
+        {effectiveStatus === 'playing' && <TimeDisplay />}
 
         {/* Connecting indicator */}
-        {whepStatus === 'connecting' && (
+        {effectiveStatus === 'connecting' && (
           <div style={{ position: 'absolute', top: 'var(--space-4)', left: 'var(--space-4)', zIndex: 10,
             background: 'rgba(0,0,0,.6)', color: '#fff', padding: '4px 12px', borderRadius: 'var(--radius-sm)',
             fontSize: 'var(--text-xs)', display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
@@ -71,11 +74,11 @@ export default function LiveMonitor() {
           </div>
         ) : showPlaceholder ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', color: 'var(--text-disabled)', padding: 'var(--space-6)' }}>
-            {whepStatus === 'error' ? (
+            {effectiveStatus === 'error' ? (
               <>
                 <AlertTriangle size={48} style={{ color: 'var(--color-danger)' }} />
-                <div style={{ color: 'var(--color-danger)', fontSize: 'var(--text-lg)' }}>{whepError}</div>
-                <Button variant="secondary" size="sm" onClick={reconnectWhep}><RefreshCw size={16} /> 重试</Button>
+                <div style={{ color: 'var(--color-danger)', fontSize: 'var(--text-lg)' }}>{effectiveError}</div>
+                <Button variant="secondary" size="sm" onClick={effectiveReconnect}><RefreshCw size={16} /> 重试</Button>
               </>
             ) : (
               <>
@@ -84,15 +87,15 @@ export default function LiveMonitor() {
                   {view ? `视图 ${view.id}` : `视图 ${cameraId}`}
                 </div>
                 <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-disabled)', textAlign: 'center', maxWidth: 360 }}>
-                  {view?.webrtc_url === null
-                    ? <><WifiOff size={16} style={{ marginRight: 4 }} />直播不可用：SRS 流媒体服务未启动，或 webrtc_url 未配置。<br />检查 SRS 是否运行在 :8080，Server 是否设置了 DEBUG_WEB_STREAM=false</>
+                  {view?.flv_url === null && view?.webrtc_url === null
+                    ? <><WifiOff size={16} style={{ marginRight: 4 }} />直播不可用：SRS 流媒体服务未启动。<br />检查 SRS 是否运行，Server 是否设置了 DEBUG_WEB_STREAM=false</>
                     : '正在等待直播信号...'}
                 </div>
               </>
             )}
           </div>
         ) : (
-          <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }} muted playsInline autoPlay />
+          <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }} playsInline autoPlay />
         )}
       </div>
 
@@ -128,6 +131,23 @@ export default function LiveMonitor() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function TimeDisplay() {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const fmt = (n: number) => String(n).padStart(2, '0');
+  const time = `${fmt(now.getHours())}:${fmt(now.getMinutes())}:${fmt(now.getSeconds())}`;
+  return (
+    <div style={{ position: 'absolute', top: 'var(--space-4)', left: 'var(--space-4)', zIndex: 10,
+      background: 'rgba(0,0,0,.5)', color: '#fff', padding: '2px 10px', borderRadius: 'var(--radius-sm)',
+      fontSize: 'var(--text-xs)', fontWeight: 'var(--font-medium)', fontFamily: 'var(--font-mono)' }}>
+      {time}
     </div>
   );
 }

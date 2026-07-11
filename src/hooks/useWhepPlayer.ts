@@ -7,19 +7,30 @@ interface WhepState {
 
 /**
  * WebRTC WHEP 直播播放器 hook。
- * 传入 webrtc_url (SRS WHEP endpoint)，自动完成 WHEP 握手并挂载到 <video> 元素。
+ * 传入 webrtc_url (SRS WHEP endpoint)，按 WHEP 协议完成握手并挂载到 <video> 元素。
+ *
+ * WHEP 协议（客户端先发 offer）：
+ *   1. 创建 RTCPeerConnection + addTransceiver
+ *   2. pc.createOffer() → pc.setLocalDescription(offer)
+ *   3. POST offer SDP → SRS 返回 answer SDP
+ *   4. pc.setRemoteDescription(answer)
+ *   5. ontrack → 绑定到 video 元素
  */
-export function useWhepPlayer(videoRef: React.RefObject<HTMLVideoElement | null>, webrtcUrl: string | null | undefined) {
+export function useWhepPlayer(
+  videoRef: React.RefObject<HTMLVideoElement | null>,
+  webrtcUrl: string | null | undefined,
+) {
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const [state, setState] = useState<WhepState>({ status: 'idle', error: '' });
-  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connect = useCallback(() => {
     if (!webrtcUrl || !videoRef.current) return;
 
     // Cleanup previous
-    if (pcRef.current) { pcRef.current.close(); pcRef.current = null; }
-    if (retryTimer.current) { clearTimeout(retryTimer.current); retryTimer.current = null; }
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
+    }
 
     setState({ status: 'connecting', error: '' });
 
@@ -39,36 +50,42 @@ export function useWhepPlayer(videoRef: React.RefObject<HTMLVideoElement | null>
     };
 
     pc.oniceconnectionstatechange = () => {
-      if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
-        setState(s => s.status === 'playing' ? s : { status: 'error', error: 'ICE 连接失败' });
+      if (
+        pc.iceConnectionState === 'failed' ||
+        pc.iceConnectionState === 'disconnected'
+      ) {
+        setState((s) =>
+          s.status === 'playing' ? s : { status: 'error', error: 'ICE 连接失败' },
+        );
       }
     };
 
     pcRef.current = pc;
 
-    // WHEP handshake
+    // WHEP handshake: client sends offer first
     (async () => {
       try {
-        // Step 1: POST → get SDP offer
-        const offerResp = await fetch(webrtcUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/sdp' },
+        // 1. Create offer with BUNDLE
+        const offer = await pc.createOffer({
+          offerToReceiveVideo: true,
+          offerToReceiveAudio: true,
         });
-        if (!offerResp.ok) throw new Error(`SRS returned ${offerResp.status}`);
-        const offerSdp = await offerResp.text();
-        await pc.setRemoteDescription({ type: 'offer', sdp: offerSdp });
+        await pc.setLocalDescription(offer);
 
-        // Step 2: Create answer
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-
-        // Step 3: PATCH answer back
-        const patchResp = await fetch(webrtcUrl, {
-          method: 'PATCH',
+        // 2. POST offer to SRS, get answer
+        const resp = await fetch(webrtcUrl, {
+          method: 'POST',
           headers: { 'Content-Type': 'application/sdp' },
           body: pc.localDescription!.sdp,
         });
-        if (!patchResp.ok) throw new Error(`SRS PATCH returned ${patchResp.status}`);
+        if (!resp.ok) {
+          const errText = await resp.text().catch(() => '');
+          throw new Error(`SRS returned ${resp.status}${errText ? ': ' + errText : ''}`);
+        }
+        const answerSdp = await resp.text();
+
+        // 3. Set remote answer
+        await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'WHEP 握手失败';
         setState({ status: 'error', error: msg });
@@ -82,8 +99,10 @@ export function useWhepPlayer(videoRef: React.RefObject<HTMLVideoElement | null>
   useEffect(() => {
     connect();
     return () => {
-      if (pcRef.current) { pcRef.current.close(); pcRef.current = null; }
-      if (retryTimer.current) clearTimeout(retryTimer.current);
+      if (pcRef.current) {
+        pcRef.current.close();
+        pcRef.current = null;
+      }
     };
   }, [connect]);
 

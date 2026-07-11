@@ -1,12 +1,14 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Camera, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { Camera, Plus, Trash2, AlertTriangle, Crosshair, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useWhepPlayer } from '../hooks/useWhepPlayer';
 import * as client from '../api/client';
 import type { FenceResponse, FenceCreate, ViewResponse } from '../api/types';
+
+type Point = [number, number];
 
 export default function FenceEditor() {
   const { viewId } = useParams<{ viewId: string }>();
@@ -17,42 +19,63 @@ export default function FenceEditor() {
   const [view, setView] = useState<ViewResponse | null>(null);
   const [fences, setFences] = useState<FenceResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [error, setError] = useState('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [showAdd, setShowAdd] = useState(false);
+
+  // Drawing mode
+  const [drawing, setDrawing] = useState(false);
+  const [drawPoints, setDrawPoints] = useState<Point[]>([]);
 
   const id = Number(viewId) || 0;
 
-  // WHEP live player
-  const { status: whepStatus, error: whepError } = useWhepPlayer(videoRef, view?.webrtc_url);
+  const { status: whepStatus } = useWhepPlayer(videoRef, view?.webrtc_url);
 
-  const [addForm, setAddForm] = useState<FenceCreate>({
-    name: '', view_id: id,
-    coords: [[0, 0], [200, 0], [200, 150], [0, 150]],
-    dwell_time: 10, density: 0.6, leave_frames: 5,
-  });
+  // Add fence form
+  const [showAdd, setShowAdd] = useState(false);
+  const [addForm, setAddForm] = useState({ name: '', dwell_time: 10, density: 0.6, leave_frames: 5 });
 
   const fetchData = useCallback(async () => {
     setLoading(true); setError('');
     try {
       const [v, f] = await Promise.all([
         client.fetchViewById(id).catch(() => null),
-        client.fetchFences().catch(() => [] as FenceResponse[]),
+        client.fetchFences(),
       ]);
       setView(v);
       setFences(f.filter(fc => fc.view_id === id));
     } catch (e) {
       setError(e instanceof Error ? e.message : '加载失败');
-    } finally { setLoading(false); }
+    } finally { setLoading(false); setInitialLoad(false); }
   }, [id]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Draw fences on canvas overlay
+  // Canvas click → add draw point
+  const onCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!drawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const newPoints: Point[] = [...drawPoints, [Math.round(x), Math.round(y)]];
+    if (newPoints.length >= 4) {
+      // Auto-finish: open save dialog with points
+      setDrawing(false);
+      setShowAdd(true);
+    }
+    setDrawPoints(newPoints);
+  }, [drawing, drawPoints]);
+
+  // Cancel drawing
+  const cancelDrawing = () => { setDrawing(false); setDrawPoints([]); };
+
+  // Draw in-progress points on canvas (fences rendered server-side into video stream)
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || fences.length === 0) return;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -60,36 +83,71 @@ export default function FenceEditor() {
     canvas.height = canvas.clientHeight;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    fences.forEach(f => {
-      if (f.coords.length < 3) return;
-      ctx.beginPath();
-      ctx.moveTo(f.coords[0][0], f.coords[0][1]);
-      for (let i = 1; i < f.coords.length; i++) ctx.lineTo(f.coords[i][0], f.coords[i][1]);
-      ctx.closePath();
-      ctx.fillStyle = f.id === selectedId ? 'rgba(56,189,248,.25)' : 'rgba(56,189,248,.12)';
-      ctx.fill();
-      ctx.strokeStyle = f.id === selectedId ? 'var(--color-info)' : 'rgba(56,189,248,.5)';
+    // Draw in-progress points
+    if (drawPoints.length > 0) {
+      ctx.fillStyle = 'var(--color-danger)';
+      ctx.strokeStyle = 'var(--color-danger)';
       ctx.lineWidth = 2;
-      ctx.stroke();
-    });
-  }, [fences, selectedId]);
+      drawPoints.forEach((p, i) => {
+        ctx.beginPath();
+        ctx.arc(p[0], p[1], 6, 0, Math.PI * 2);
+        ctx.fill();
+        // Number
+        ctx.fillStyle = '#fff';
+        ctx.font = '10px monospace';
+        ctx.fillText(String(i + 1), p[0] - 3, p[1] + 4);
+        ctx.fillStyle = 'var(--color-danger)';
+      });
+      // Draw lines between points
+      if (drawPoints.length >= 2) {
+        ctx.beginPath();
+        ctx.moveTo(drawPoints[0][0], drawPoints[0][1]);
+        for (let i = 1; i < drawPoints.length; i++) ctx.lineTo(drawPoints[i][0], drawPoints[i][1]);
+        if (drawPoints.length === 4) ctx.closePath();
+        ctx.strokeStyle = 'var(--color-danger)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+  }, [drawPoints]);
 
   const doAdd = async () => {
-    if (!addForm.name.trim()) return;
+    if (!addForm.name.trim()) { setError('请输入围栏名称'); return; }
+    if (drawPoints.length < 4) { setError('请先绘制 4 个点'); return; }
+    setError('');
     setActionLoading(true);
     try {
-      await client.createFence({ ...addForm, view_id: id });
+      const body = {
+        name: addForm.name,
+        view_id: id,
+        coords: drawPoints.slice(0, 4),
+        dwell_time: addForm.dwell_time,
+        density: addForm.density,
+        leave_frames: addForm.leave_frames,
+      };
+      console.log('[FenceEditor] createFence', body);
+      const saved = await client.createFence(body);
       setShowAdd(false);
-      setAddForm({ name: '', view_id: id, coords: [[0, 0], [200, 0], [200, 150], [0, 150]], dwell_time: 10, density: 0.6, leave_frames: 5 });
-      await fetchData();
-    } catch { /* ignore */ }
-    finally { setActionLoading(false); }
+      setDrawPoints([]);
+      setAddForm({ name: '', dwell_time: 10, density: 0.6, leave_frames: 5 });
+      // Optimistic: add the saved fence to local list immediately
+      setFences(prev => [...prev, saved]);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : '添加围栏失败';
+      console.error('[FenceEditor] createFence failed:', e);
+      setError(msg);
+    } finally { setActionLoading(false); }
   };
 
   const doDelete = async (fid: number) => {
     setActionLoading(true);
-    try { await client.deleteFence(fid); if (selectedId === fid) setSelectedId(null); await fetchData(); }
-    catch { /* ignore */ }
+    try {
+      await client.deleteFence(fid);
+      if (selectedId === fid) setSelectedId(null);
+      await fetchData();
+    } catch { /* ignore */ }
     finally { setActionLoading(false); }
   };
 
@@ -104,43 +162,53 @@ export default function FenceEditor() {
       {/* Left: video + canvas overlay */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
         background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,.06)', position: 'relative', overflow: 'hidden' }}>
-        {loading ? (
+        {initialLoad ? (
           <Skeleton style={{ flex: 1 }} />
         ) : view?.webrtc_url ? (
           <div style={{ flex: 1, position: 'relative' }}>
             <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }} muted playsInline autoPlay />
-            <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
+            <canvas ref={canvasRef} onClick={onCanvasClick}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%',
+                cursor: drawing ? 'crosshair' : 'default', pointerEvents: drawing ? 'auto' : 'none' }} />
           </div>
         ) : (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', color: 'var(--text-disabled)' }}>
             <Camera size={80} />
             <div style={{ fontSize: 28, fontWeight: 'var(--font-bold)', color: 'var(--text-secondary)' }}>视图 {viewId}</div>
-            <div style={{ fontSize: 'var(--text-sm)' }}>{whepError || 'webrtc_url 不可用 — 请检查 SRS 是否启动'}</div>
+            <div>webrtc_url 不可用</div>
           </div>
         )}
-        <div style={{ padding: 'var(--space-4)', textAlign: 'center', fontSize: 'var(--text-sm)', color: 'var(--text-disabled)' }}>
-          摄像机: {viewId} {whepStatus === 'connecting' ? '· 连接中...' : ''}
+
+        {/* Drawing toolbar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-4) var(--space-6)', borderTop: '1px solid rgba(255,255,255,.06)' }}>
+          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>视图 {viewId}</span>
+          {whepStatus === 'playing' && !drawing && (
+            <Button variant="primary" size="sm" icon={Crosshair} onClick={() => { setDrawPoints([]); setDrawing(true); }}>开始绘制围栏</Button>
+          )}
+          {drawing && (
+            <>
+              <span style={{ color: 'var(--color-danger)', fontSize: 'var(--text-sm)' }}>
+                请在视频上点击 4 个顶点（已点 {drawPoints.length}/4）
+              </span>
+              <Button variant="ghost" size="sm" onClick={cancelDrawing}><X size={14} /> 取消</Button>
+            </>
+          )}
+          {whepStatus === 'connecting' && <span style={{ color: 'var(--text-disabled)', fontSize: 'var(--text-sm)' }}>视频连接中...</span>}
         </div>
       </div>
 
-      {/* Right: fence list + CRUD */}
+      {/* Right panel */}
       <div style={{ width: 360, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
         <div style={{ flex: 1, background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)',
           padding: 'var(--space-4)', border: '1px solid rgba(255,255,255,.06)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--font-semibold)' }}>围栏区域</span>
-            <Button variant="primary" size="sm" icon={Plus} onClick={() => setShowAdd(true)} disabled={actionLoading}>新增</Button>
+            <span style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--font-semibold)' }}>围栏列表</span>
           </div>
 
-          {error && (
-            <div style={{ textAlign: 'center', padding: 'var(--space-4)', color: 'var(--color-danger)' }}>
-              <AlertTriangle size={24} /><div>{error}</div>
-              <Button variant="secondary" size="sm" onClick={fetchData}>重试</Button>
-            </div>
-          )}
+          {error && <div style={{ color: 'var(--color-danger)', fontSize: 'var(--text-sm)', textAlign: 'center' }}>{error}</div>}
 
           {fences.length === 0 && !error && (
-            <div style={{ textAlign: 'center', color: 'var(--text-disabled)', padding: 'var(--space-4)' }}>暂无围栏，点击"新增"创建</div>
+            <div style={{ textAlign: 'center', color: 'var(--text-disabled)', padding: 'var(--space-4)' }}>暂无围栏，点击左侧按钮绘制</div>
           )}
 
           {fences.map(f => (
@@ -164,19 +232,28 @@ export default function FenceEditor() {
         </div>
       </div>
 
-      {/* Add fence modal */}
+      {/* Save fence modal */}
       {showAdd && (
-        <Modal onClose={() => setShowAdd(false)} title="新增围栏">
-          <input style={inputStyle} placeholder="围栏名称" value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} />
+        <Modal onClose={() => { setShowAdd(false); setDrawPoints([]); }} title="保存围栏">
+          <div style={{fontSize:'var(--text-sm)',color:'var(--text-secondary)',marginBottom:'var(--space-3)'}}>
+            已绘制 {drawPoints.length}/4 个顶点
+          </div>
+          <input style={inputStyle} placeholder="围栏名称" value={addForm.name}
+            onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} autoFocus />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
             <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>停留时限(s)</label>
-              <input style={inputStyle} type="number" value={addForm.dwell_time} onChange={e => setAddForm(f => ({ ...f, dwell_time: Number(e.target.value) }))} /></div>
+              <input style={inputStyle} type="number" value={addForm.dwell_time}
+                onChange={e => setAddForm(f => ({ ...f, dwell_time: Number(e.target.value) }))} /></div>
             <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>密度阈值</label>
-              <input style={inputStyle} type="number" step="0.1" min="0" max="1" value={addForm.density} onChange={e => setAddForm(f => ({ ...f, density: Number(e.target.value) }))} /></div>
+              <input style={inputStyle} type="number" step="0.1" min="0" max="1" value={addForm.density}
+                onChange={e => setAddForm(f => ({ ...f, density: Number(e.target.value) }))} /></div>
           </div>
           <div style={{ marginBottom: 'var(--space-3)' }}><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>离开判定帧数</label>
-            <input style={inputStyle} type="number" value={addForm.leave_frames} onChange={e => setAddForm(f => ({ ...f, leave_frames: Number(e.target.value) }))} /></div>
-          <Button variant="primary" style={{ width: '100%' }} onClick={doAdd} disabled={actionLoading}>确认添加</Button>
+            <input style={inputStyle} type="number" value={addForm.leave_frames}
+              onChange={e => setAddForm(f => ({ ...f, leave_frames: Number(e.target.value) }))} /></div>
+          <Button variant="primary" style={{ width: '100%' }} onClick={doAdd} disabled={actionLoading || drawPoints.length < 4}>
+            保存围栏
+          </Button>
         </Modal>
       )}
     </div>
