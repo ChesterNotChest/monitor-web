@@ -27,7 +27,8 @@ function LazyPage({ Component }: { Component: React.LazyExoticComponent<() => JS
 }
 
 function AuthGuard() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  if (loading) return <PageFallback />;
   if (!user) return <Navigate to="/login" replace />;
   return <Outlet />;
 }

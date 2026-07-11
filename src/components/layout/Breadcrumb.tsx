@@ -23,18 +23,21 @@ function buildCrumbs(pathname: string, source?: string): {label:string;path?:str
   // Add current page segments
   const parts = pathname.split('/').filter(Boolean);
   let acc = '';
-  for (const p of parts) {
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i];
+    const prev = parts[i - 1];
     acc += '/' + p;
     // Skip if already covered by source
     if (result.find(r=>r.path===acc)) continue;
     if (p.match(/^\d{4}-\d{2}-\d{2}$/)) {
       result.push({ label: p });
-    } else if (p.startsWith('event-') || p.startsWith('alert-')) {
-      result.push({ label: `事件回放` });
     } else if (p.match(/^\d+$/)) {
-      result.push({ label: `第${p}周` });
+      if (prev === 'view') result.push({ label: `视图 ${p}` });
+      else if (prev === 'replay') result.push({ label: `回放 #${p}` });
+      else if (prev === 'weekly-report' || prev === 'report') result.push({ label: `第${p}周` });
+      else result.push({ label: `#${p}` });
     } else if (p==='replay') {
-      result.push({ label: '事件回放' }); // no path - replay has no list page
+      result.push({ label: '事件回放' });
     } else {
       result.push({ label: labelMap[p]||p, path: acc });
     }

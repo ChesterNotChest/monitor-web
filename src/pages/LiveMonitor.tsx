@@ -54,14 +54,8 @@ export default function LiveMonitor() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
         background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,.06)', position: 'relative', overflow: 'hidden' }}>
 
-        {/* LIVE badge */}
-        {effectiveStatus === 'playing' && (
-          <div style={{ position: 'absolute', top: 'var(--space-4)', left: 'var(--space-4)',
-            background: 'var(--color-danger)', color: '#fff', padding: '2px 10px', borderRadius: 'var(--radius-sm)',
-            fontSize: 'var(--text-xs)', fontWeight: 'var(--font-bold)', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 'var(--space-1)', zIndex: 10 }}>
-            <span style={{ width: 6, height: 6, background: '#fff', borderRadius: '50%', animation: 'pulse-ring 1.4s ease-out infinite' }} />LIVE
-          </div>
-        )}
+        {/* Time display */}
+        {effectiveStatus === 'playing' && <TimeDisplay />}
 
         {/* Connecting indicator */}
         {effectiveStatus === 'connecting' && (
@@ -101,7 +95,7 @@ export default function LiveMonitor() {
             )}
           </div>
         ) : (
-          <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }} muted playsInline autoPlay />
+          <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }} playsInline autoPlay />
         )}
       </div>
 
@@ -137,6 +131,23 @@ export default function LiveMonitor() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function TimeDisplay() {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const fmt = (n: number) => String(n).padStart(2, '0');
+  const time = `${fmt(now.getHours())}:${fmt(now.getMinutes())}:${fmt(now.getSeconds())}`;
+  return (
+    <div style={{ position: 'absolute', top: 'var(--space-4)', left: 'var(--space-4)', zIndex: 10,
+      background: 'rgba(0,0,0,.5)', color: '#fff', padding: '2px 10px', borderRadius: 'var(--radius-sm)',
+      fontSize: 'var(--text-xs)', fontWeight: 'var(--font-medium)', fontFamily: 'var(--font-mono)' }}>
+      {time}
     </div>
   );
 }

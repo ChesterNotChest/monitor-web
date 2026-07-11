@@ -38,12 +38,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(u);
         setToken(storedToken);
       })
-      .catch(() => {
-        // Token expired or invalid — clear storage
-        localStorage.removeItem('access-token');
-        localStorage.removeItem('current-user');
-        setUser(null);
-        setToken(null);
+      .catch((e: unknown) => {
+        // Only clear on 401 (token expired). Network errors keep the session.
+        if (e instanceof client.ApiError && e.status === 401) {
+          localStorage.removeItem('access-token');
+          localStorage.removeItem('current-user');
+          setUser(null);
+          setToken(null);
+        } else {
+          // Network error or server down — keep token and restore user from cache
+          const cached = localStorage.getItem('current-user');
+          if (cached) {
+            try { setUser(JSON.parse(cached)); setToken(storedToken); } catch { setUser(null); setToken(null); }
+          }
+        }
       })
       .finally(() => setLoading(false));
   }, []);
