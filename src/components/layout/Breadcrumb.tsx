@@ -3,7 +3,7 @@ import { useLocation, useNavigate, matchPath } from 'react-router-dom';
 const labelMap: Record<string,string> = {
   main:'主面板',view:'实时监控',edit:'电子围栏',replay:'事件回放',
   log:'日志',report:'报表','weekly-report':'周报',
-  users:'用户管理',characters:'人物管理',equipment:'设备信息','exception-settings':'异常设置',
+  users:'用户管理',characters:'人物管理',equipment:'设备信息','exception-settings':'异常设置','detection-settings':'检测类型管理',
 };
 
 // Build breadcrumbs from a path, using source info from state

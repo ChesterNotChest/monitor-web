@@ -5,6 +5,7 @@ import { Card } from '../components/ui/Card';
 import { Panel } from '../components/ui/Panel';
 import { Skeleton } from '../components/ui/Skeleton';
 import * as client from '../api/client';
+import { config } from '../api/config';
 import type { PersonResponse } from '../api/types';
 
 export default function CharacterManagement() {
@@ -126,7 +127,7 @@ export default function CharacterManagement() {
             <div style={{ background: 'var(--bg-canvas)', borderRadius: 'var(--radius-md)', padding: 'var(--space-6)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 220, flexDirection: 'column', gap: 'var(--space-3)' }}>
               {char.avatar_path ? (
-                <img src={char.avatar_path} alt={char.name} style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 'var(--radius-md)', objectFit: 'cover' }} />
+                <img src={`${config.serverBaseUrl}/face_images/${char.avatar_path}`} alt={char.name} style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 'var(--radius-md)', objectFit: 'cover' }} />
               ) : (
                 <span style={{ fontSize: 'var(--text-lg)', color: 'var(--text-disabled)' }}>未设置照片</span>
               )}
