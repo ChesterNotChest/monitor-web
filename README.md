@@ -81,8 +81,8 @@ npm install
 
 ```env
 VITE_SERVER_BASE_URL=http://localhost
-VITE_API_PORT=8000
-VITE_WEBRTC_PORT=8080
+VITE_API_PORT=8002
+VITE_WEBRTC_PORT=8082
 ```
 
 - `VITE_SERVER_BASE_URL` — Server 主机地址（不含端口）
