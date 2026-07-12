@@ -236,6 +236,29 @@ export interface ReportResponse {
   top_exceptions: ReportItem[];
 }
 
+export interface DailyTrendPoint {
+  hour: string;
+  count: number;
+}
+
+export interface DailyReportResponse extends ReportResponse {
+  date: string;
+  risk_level: string;
+  summary: string;
+  key_findings: string[];
+  recommendations: string[];
+  hourly_trend: DailyTrendPoint[];
+  ai_provider?: string | null;
+  ai_model?: string | null;
+  ai_generated: boolean;
+}
+
+export interface DeepSeekDailyReportRequest {
+  date?: string | null;
+  api_key: string;
+  model?: string;
+}
+
 // ══════════════════════════════════════════════
 // View (view_schema.py)
 // ══════════════════════════════════════════════

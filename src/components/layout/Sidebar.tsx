@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ScrollText, Users, UserSquare, Monitor, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, Zap, LogOut, Key, Tag } from 'lucide-react';
+import { LayoutDashboard, ScrollText, Users, UserSquare, Monitor, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, Zap, LogOut, Key, Tag, FileText } from 'lucide-react';
 import { useAlerts } from '../../context/AlertContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -9,6 +9,7 @@ interface NavItem { path: string; label: string; icon: typeof LayoutDashboard; b
 const baseItems: NavItem[] = [
   { path:'/main',label:'主面板',icon:LayoutDashboard },
   { path:'/log',label:'日志',icon:ScrollText },
+  { path:`/report/${new Date().toISOString().slice(0, 10)}`,label:'监控日报',icon:FileText },
   { path:'/users',label:'用户管理',icon:Users },
   { path:'/characters',label:'人物管理',icon:UserSquare },
   { path:'/equipment',label:'设备信息',icon:Monitor },

@@ -1,0 +1,4 @@
+- [x] 1. Propose DeepSeek daily report UI behavior.
+- [x] 2. Add frontend API types/client for DeepSeek report generation.
+- [x] 3. Add API key input and generate action to the daily report page.
+- [x] 4. Validate OpenSpec and run frontend build check.

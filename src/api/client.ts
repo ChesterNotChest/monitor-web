@@ -31,6 +31,8 @@ import type {
   PersonResponse,
   PersonUpdate,
   RecordingResponse,
+  DailyReportResponse,
+  DeepSeekDailyReportRequest,
   ReportResponse,
   TrendItem,
   UserResponse,
@@ -376,6 +378,17 @@ export async function fetchWeeklyReport(): Promise<ReportResponse> {
 
 export async function fetchMonthlyReport(): Promise<ReportResponse> {
   return baseFetch<ReportResponse>('/reports/monthly');
+}
+
+export async function fetchDailyReport(date?: string): Promise<DailyReportResponse> {
+  return baseFetch<DailyReportResponse>(`/reports/daily${qs({ date })}`);
+}
+
+export async function generateDeepSeekDailyReport(body: DeepSeekDailyReportRequest): Promise<DailyReportResponse> {
+  return baseFetch<DailyReportResponse>('/reports/daily/deepseek', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }
 
 // ══════════════════════════════════════════════
