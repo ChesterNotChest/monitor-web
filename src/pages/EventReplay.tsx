@@ -67,6 +67,19 @@ export default function EventReplay() {
     load();
   }, [id]);
 
+  // 定时轮询录制状态（录制中时每3秒刷新）
+  useEffect(() => {
+    if (!activeRecording?.end_time) {
+      const timer = setInterval(async () => {
+        try {
+          const recs = await client.fetchRecordings(activeRecording.view_id).catch(() => [] as RecordingResponse[]);
+          setRecordings(recs);
+        } catch { /* ignore */ }
+      }, 3000);
+      return () => clearInterval(timer);
+    }
+  }, [activeRecording?.id, activeRecording?.end_time]);
+
   // flv.js player
   useEffect(() => {
     if (!activeRecording || !videoRef.current) return;
@@ -78,7 +91,8 @@ export default function EventReplay() {
     setDuration(0);
 
     const url = client.getRecordingStreamUrl(activeRecording.id);
-    const player = flvjs.createPlayer({ type: 'flv', url, isLive: true, hasAudio: true, hasVideo: true });
+    const isLive = !activeRecording.end_time;  // 录制中→live模式，已完成→file模式
+    const player = flvjs.createPlayer({ type: 'flv', url, isLive, hasAudio: false, hasVideo: true });
     player.attachMediaElement(videoRef.current);
     player.load();
 
@@ -86,16 +100,22 @@ export default function EventReplay() {
       const err = _e as Error;
       console.error('[EventReplay] flv.js error', err?.message || err);
       setVideoError('视频加载失败: ' + (err?.message || '未知错误'));
+      setPlaying(false);
     });
     player.on(flvjs.Events.METADATA_ARRIVED, () => {
       const p = player.play();
       if (p) { p.then(() => setPlaying(true)).catch(() => setVideoError('播放失败')); }
       else { setPlaying(true); }
     });
+    player.on(flvjs.Events.LOADING_COMPLETE, () => setPlaying(false));
     playerRef.current = player;
 
-    return () => { player.destroy(); playerRef.current = null; };
-  }, [activeRecording?.id]);
+    return () => {
+      try { player.detachMediaElement(); player.destroy(); } catch (_) {}
+      playerRef.current = null;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRecording?.id, activeRecording?.end_time]);
 
   // Time tracking
   const onTimeUpdate = useCallback(() => {

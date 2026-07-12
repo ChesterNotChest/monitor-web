@@ -166,8 +166,8 @@ export default function MainDashboard() {
               padding:'var(--space-3)',borderRadius:'var(--radius-sm)',background:'var(--bg-canvas)',
               borderLeft:'3px solid var(--color-danger)'}}>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:'var(--text-sm)',fontWeight:'var(--font-medium)',color:'var(--text-primary)'}}>告警 #{a.id}</div>
-                <div style={{fontSize:'var(--text-xs)',color:'var(--text-secondary)',marginTop:2}}>{a.timestamp} · 视图 {a.view_id}</div>
+                <div style={{fontSize:'var(--text-sm)',fontWeight:'var(--font-medium)',color:'var(--text-primary)'}}>{a.exception_name || `告警 #${a.id}`}</div>
+                <div style={{fontSize:'var(--text-xs)',color:'var(--text-secondary)',marginTop:2}}>Track #{a.track_id} · {a.timestamp} · 视图 {a.view_id}</div>
               </div>
               <Badge level="danger">待处理</Badge>
               <Button variant="ghost" size="sm" onClick={()=>goTo(`/view/${a.view_id}`,{from:'/main'})}>进入视图</Button>

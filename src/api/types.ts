@@ -53,8 +53,11 @@ export interface AlertResponse {
   id: number;
   view_id: number;
   exception_id: number;
+  exception_name: string;
+  track_id: number;
   recording_id: number | null;
   timestamp: string;
+  severity: string;
 }
 
 export type AlertListResponse = PaginatedResponse<AlertResponse>;
@@ -162,6 +165,9 @@ export interface ExceptionCreate {
   group_id?: number | null;
   face_result_id?: number | null;
   fence_event_id?: number | null;
+  cooldown_seconds?: number;
+  max_recording_seconds?: number;
+  wind_down_seconds?: number;
 }
 
 export interface ExceptionResponse {
@@ -171,6 +177,9 @@ export interface ExceptionResponse {
   group_id: number | null;
   face_result_id: number | null;
   fence_event_id: number | null;
+  cooldown_seconds: number;
+  max_recording_seconds: number;
+  wind_down_seconds: number;
   created_at: string;
 }
 
