@@ -58,13 +58,18 @@ export default function LogCenter() {
 
   useEffect(() => { fetchData(); }, []);
 
+  const SEV_LABELS: Record<number, string> = { 1: 'INFO', 2: 'WARNING', 3: 'CRITICAL', 4: 'EMERGENCY' };
+  const SEV_LEVELS: Record<string, string> = { '1': 'neutral', '2': 'warning', '3': 'danger', '4': 'danger' };
+
   const logEntries = [...logs]
-    .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
     .slice(0, 6)
     .map(l => ({
-      time: l.timestamp.slice(11, 16),
-      level: l.level,
-      message: l.message,
+      time: l.created_at ? l.created_at.slice(11, 16) : '',
+      severity: l.severity,
+      sevLabel: l.severity ? SEV_LABELS[l.severity] || `L${l.severity}` : '',
+      sevLevel: l.severity ? SEV_LEVELS[String(l.severity)] || 'neutral' : 'neutral',
+      message: l.summary,
       id: l.id,
     }));
 
@@ -101,7 +106,7 @@ export default function LogCenter() {
             >
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-base)', color: 'var(--text-primary)', width: 48, flexShrink: 0 }}>{e.time}</span>
               <span style={{ fontSize: 'var(--text-base)', color: 'var(--text-secondary)', flex: 1 }}>{e.message}</span>
-              <Badge level={e.level === 'ERROR' ? 'danger' : e.level === 'WARNING' ? 'warning' : 'neutral'}>{e.level}</Badge>
+              <Badge level={e.sevLevel as 'danger' | 'warning' | 'neutral'}>{e.sevLabel}</Badge>
             </div>
           ))
         )}

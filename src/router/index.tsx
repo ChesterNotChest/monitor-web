@@ -16,6 +16,7 @@ const CharacterManagement = lazy(() => import('../pages/CharacterManagement'));
 const DeviceInfo = lazy(() => import('../pages/DeviceInfo'));
 const ExceptionSettings = lazy(() => import('../pages/ExceptionSettings'));
 const WeeklyReportDetail = lazy(() => import('../pages/WeeklyReportDetail'));
+const DetectionSettings = lazy(() => import('../pages/DetectionSettings'));
 const EventStats = lazy(() => import('../pages/EventStats'));
 
 function PageFallback() {
@@ -50,6 +51,7 @@ const protectedRoutes = [
   { path: '/characters', element: <LazyPage Component={CharacterManagement} /> },
   { path: '/equipment', element: <LazyPage Component={DeviceInfo} /> },
   { path: '/exception-settings', element: <LazyPage Component={ExceptionSettings} /> },
+  { path: '/detection-settings', element: <LazyPage Component={DetectionSettings} /> },
   { path: '/event-stats', element: <LazyPage Component={EventStats} /> },
 ];
 

@@ -272,6 +272,36 @@ export async function deleteSoundType(id: number): Promise<void> {
   await baseFetch<void>(`/detection/sound-types/${id}`, { method: 'DELETE' });
 }
 
+// ── Fence Event Types ──────────────────────────
+
+export async function fetchFenceEventTypes(): Promise<DetectionTypeResponse[]> {
+  return baseFetch<DetectionTypeResponse[]>('/detection/fence-event-types');
+}
+
+export async function createFenceEventType(body: DetectionTypeCreate): Promise<DetectionTypeResponse> {
+  return baseFetch<DetectionTypeResponse>('/detection/fence-event-types', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateFenceEventType(id: number, body: DetectionTypeCreate): Promise<DetectionTypeResponse> {
+  return baseFetch<DetectionTypeResponse>(`/detection/fence-event-types/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteFenceEventType(id: number): Promise<void> {
+  await baseFetch<void>(`/detection/fence-event-types/${id}`, { method: 'DELETE' });
+}
+
+// ── Face Recognition Results ────────────────────
+
+export async function fetchFaceRecognitionResults(): Promise<DetectionTypeResponse[]> {
+  return baseFetch<DetectionTypeResponse[]>('/face-recognition-results');
+}
+
 // ══════════════════════════════════════════════
 // Exceptions
 // ══════════════════════════════════════════════

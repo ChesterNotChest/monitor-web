@@ -203,9 +203,14 @@ export interface FenceResponse {
 
 export interface LogEntry {
   id: number;
-  level: string;
-  message: string;
-  timestamp: string;
+  log_type: number;
+  operator_id: number | null;
+  view_id: number | null;
+  event_id: number | null;
+  severity: number | null;
+  summary: string;
+  details_json: string | null;
+  created_at: string;
 }
 
 export interface LogListResponse {
@@ -242,6 +247,7 @@ export interface ViewCreateRequest {
 
 export interface ViewResponse {
   id: number;
+  name: string | null;
   audio_id: number;
   video_id: number;
   cache_path: string | null;

@@ -6,12 +6,14 @@ import { Badge } from '../components/ui/Badge';
 import { StatusDot } from '../components/ui/StatusDot';
 import { Skeleton } from '../components/ui/Skeleton';
 import * as client from '../api/client';
-import type { ExceptionResponse, ExceptionCreate, AlertGroupResponse } from '../api/types';
+import type { ExceptionResponse, ExceptionCreate, AlertGroupResponse, DetectionTypeResponse } from '../api/types';
 import { SeverityLabel, SeverityBadgeLevel, SeverityLevel } from '../api/enums';
 
 export default function ExceptionSettings() {
   const [exceptions, setExceptions] = useState<ExceptionResponse[]>([]);
   const [alertGroups, setAlertGroups] = useState<AlertGroupResponse[]>([]);
+  const [fenceEventTypes, setFenceEventTypes] = useState<DetectionTypeResponse[]>([]);
+  const [faceResults, setFaceResults] = useState<DetectionTypeResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<number | null>(null);
@@ -23,12 +25,16 @@ export default function ExceptionSettings() {
     setLoading(true);
     setError('');
     try {
-      const [data, groups] = await Promise.all([
+      const [data, groups, fenceTypes, faceRes] = await Promise.all([
         client.fetchExceptions(),
         client.fetchAlertGroups(),
+        client.fetchFenceEventTypes(),
+        client.fetchFaceRecognitionResults(),
       ]);
       setExceptions(data);
       setAlertGroups(groups);
+      setFenceEventTypes(fenceTypes);
+      setFaceResults(faceRes);
     } catch (e) {
       setError(e instanceof Error ? e.message : '加载失败');
     } finally {
@@ -41,24 +47,24 @@ export default function ExceptionSettings() {
   const selectedEx = exceptions.find(e => e.id === selected);
 
   // Add form
-  const [addForm, setAddForm] = useState<ExceptionCreate>({ name: '', severity: SeverityLevel.WARNING, group_id: null });
+  const [addForm, setAddForm] = useState<ExceptionCreate>({ name: '', severity: SeverityLevel.WARNING, group_id: null, face_result_id: null, fence_event_id: null });
   const doAdd = async () => {
     if (!addForm.name.trim()) return;
     setActionLoading(true);
     try {
       await client.createException(addForm);
       setShowAdd(false);
-      setAddForm({ name: '', severity: SeverityLevel.WARNING, group_id: null });
+      setAddForm({ name: '', severity: SeverityLevel.WARNING, group_id: null, face_result_id: null, fence_event_id: null });
       await fetchData();
     } catch { /* ignore */ }
     finally { setActionLoading(false); }
   };
 
   // Edit form
-  const [editForm, setEditForm] = useState<ExceptionCreate>({ name: '', severity: SeverityLevel.WARNING, group_id: null });
+  const [editForm, setEditForm] = useState<ExceptionCreate>({ name: '', severity: SeverityLevel.WARNING, group_id: null, face_result_id: null, fence_event_id: null });
   const openEdit = () => {
     if (!selectedEx) return;
-    setEditForm({ name: selectedEx.name, severity: selectedEx.severity, group_id: selectedEx.group_id });
+    setEditForm({ name: selectedEx.name, severity: selectedEx.severity, group_id: selectedEx.group_id, face_result_id: selectedEx.face_result_id, fence_event_id: selectedEx.fence_event_id });
     setShowEdit(true);
   };
   const doEdit = async () => {
@@ -133,7 +139,7 @@ export default function ExceptionSettings() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
             <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--font-bold)', color: 'var(--text-primary)' }}>详情</h3>
           </div>
-          {selectedEx ? <ExceptionDetail selectedEx={selectedEx} alertGroups={alertGroups} /> : (
+          {selectedEx ? <ExceptionDetail selectedEx={selectedEx} alertGroups={alertGroups} fenceEventTypes={fenceEventTypes} faceResults={faceResults} /> : (
             <div style={{ color: 'var(--text-disabled)', textAlign: 'center', padding: 'var(--space-8)' }}>
               请选择左侧异常类型
             </div>
@@ -152,6 +158,14 @@ export default function ExceptionSettings() {
           <select style={inputStyle} value={addForm.severity} onChange={e => setAddForm(f => ({ ...f, severity: Number(e.target.value) }))}>
             {Object.entries(SeverityLabel).map(([k, v]) => <option key={k} value={Number(k)}>{v}</option>)}
           </select>
+          <select style={inputStyle} value={addForm.face_result_id ?? ''} onChange={e => setAddForm(f => ({ ...f, face_result_id: e.target.value ? Number(e.target.value) : null }))}>
+            <option value="">人脸识别条件（无）</option>
+            {faceResults.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+          <select style={inputStyle} value={addForm.fence_event_id ?? ''} onChange={e => setAddForm(f => ({ ...f, fence_event_id: e.target.value ? Number(e.target.value) : null }))}>
+            <option value="">围栏事件条件（无）</option>
+            {fenceEventTypes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
           <Button variant="primary" style={{ width: '100%' }} onClick={doAdd} disabled={actionLoading}>确认添加</Button>
         </Modal>
       )}
@@ -162,6 +176,14 @@ export default function ExceptionSettings() {
           <select style={inputStyle} value={editForm.severity} onChange={e => setEditForm(f => ({ ...f, severity: Number(e.target.value) }))}>
             {Object.entries(SeverityLabel).map(([k, v]) => <option key={k} value={Number(k)}>{v}</option>)}
           </select>
+          <select style={inputStyle} value={editForm.face_result_id ?? ''} onChange={e => setEditForm(f => ({ ...f, face_result_id: e.target.value ? Number(e.target.value) : null }))}>
+            <option value="">人脸识别条件（无）</option>
+            {faceResults.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+          <select style={inputStyle} value={editForm.fence_event_id ?? ''} onChange={e => setEditForm(f => ({ ...f, fence_event_id: e.target.value ? Number(e.target.value) : null }))}>
+            <option value="">围栏事件条件（无）</option>
+            {fenceEventTypes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
           <Button variant="primary" style={{ width: '100%' }} onClick={doEdit} disabled={actionLoading}>保存修改</Button>
         </Modal>
       )}
@@ -169,8 +191,19 @@ export default function ExceptionSettings() {
   );
 }
 
-function ExceptionDetail({ selectedEx, alertGroups }: { selectedEx: ExceptionResponse; alertGroups: AlertGroupResponse[] }) {
+function ExceptionDetail({ selectedEx, alertGroups, fenceEventTypes, faceResults }: {
+  selectedEx: ExceptionResponse;
+  alertGroups: AlertGroupResponse[];
+  fenceEventTypes: DetectionTypeResponse[];
+  faceResults: DetectionTypeResponse[];
+}) {
   const group = alertGroups.find(g => g.id === selectedEx.group_id);
+  const fenceName = selectedEx.fence_event_id != null
+    ? fenceEventTypes.find(f => f.id === selectedEx.fence_event_id)?.name ?? `#${selectedEx.fence_event_id}`
+    : null;
+  const faceName = selectedEx.face_result_id != null
+    ? faceResults.find(f => f.id === selectedEx.face_result_id)?.name ?? `#${selectedEx.face_result_id}`
+    : null;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', fontSize: 'var(--text-base)', color: 'var(--text-secondary)' }}>
       <div>名称：<span style={{ color: 'var(--text-primary)', fontWeight: 'var(--font-medium)' }}>{selectedEx.name}</span></div>
@@ -186,8 +219,8 @@ function ExceptionDetail({ selectedEx, alertGroups }: { selectedEx: ExceptionRes
           </div>
         </div>
       )}
-      {selectedEx.face_result_id != null && <div>人脸识别结果ID：<span style={{ color: 'var(--text-primary)' }}>{selectedEx.face_result_id}</span></div>}
-      {selectedEx.fence_event_id != null && <div>围栏事件ID：<span style={{ color: 'var(--text-primary)' }}>{selectedEx.fence_event_id}</span></div>}
+      {faceName != null && <div>人脸识别结果：<span style={{ color: 'var(--text-primary)' }}>{faceName}</span></div>}
+      {fenceName != null && <div>围栏事件类型：<span style={{ color: 'var(--text-primary)' }}>{fenceName}</span></div>}
       <div>创建时间：<span style={{ color: 'var(--text-primary)', fontSize: 'var(--text-sm)' }}>{selectedEx.created_at}</span></div>
     </div>
   );
