@@ -24,7 +24,9 @@ export default function EventReplay() {
   const id = Number(alertId);
   const st = (location.state as any) || {};
   const from = st.from || '';
-  const urlStatus = new URLSearchParams(window.location.search).get('status') as ReviewStatus | null;
+  const searchParams = new URLSearchParams(window.location.search);
+  const urlStatus = searchParams.get('status') as ReviewStatus | null;
+  const ackToken = searchParams.get('token');
 
   const [eventDetail, setEventDetail] = useState<EventResponse | null>(null);
   const [recordings, setRecordings] = useState<RecordingResponse[]>([]);
@@ -35,6 +37,20 @@ export default function EventReplay() {
   const [reviewStatus, setReviewStatus] = useState<ReviewStatus>(
     urlStatus === 'handled' || urlStatus === 'false_alarm' ? urlStatus : 'pending'
   );
+
+  // Auto-ack via ?token=xxx from DingTalk message
+  useEffect(() => {
+    if (ackToken && !isNaN(id) && reviewStatus === 'pending') {
+      fetch(`/api/v1/alerts/${id}/ack?token=${ackToken}`)
+        .then(async (r) => {
+          if (r.ok) {
+            await client.acknowledgeAlert(id);
+            setReviewStatus('acknowledged');
+          }
+        })
+        .catch(() => {});
+    }
+  }, [ackToken, id]);
 
   // Video
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -146,15 +162,14 @@ export default function EventReplay() {
   };
   const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
 
-  const handleMark = async (action: ReviewStatus) => {
+  const handleMark = async (action: string) => {
     if (action === 'handled') await markHandled(id);
     else if (action === 'false_alarm') await markFalseAlarm(id);
-    setReviewStatus(action);
-    // Persist status in browser URL so refresh doesn't lose it
+    else if (action === 'acknowledged') await client.acknowledgeAlert(id);
+    setReviewStatus(action as ReviewStatus);
     const url = new URL(window.location.href);
     url.searchParams.set('status', action);
     window.history.replaceState(null, '', url.toString());
-    // Auto-navigate back after 1.5s
     setTimeout(() => goBack(), 1500);
   };
 
@@ -238,15 +253,19 @@ export default function EventReplay() {
               <span style={{ color: 'var(--text-secondary)' }}>处理状态</span>
               {reviewStatus === 'handled' ? <Badge level="success"><CheckCircle size={14} /> 已处理</Badge> :
                reviewStatus === 'false_alarm' ? <Badge level="neutral"><XCircle size={14} /> 误报</Badge> :
+               reviewStatus === 'acknowledged' ? <Badge level="info">已确认</Badge> :
                <Badge level="danger">未处理</Badge>}
             </div>
           </div>
         </div>
 
         {!isResolved && (
-          <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-            <Button variant="secondary" size="lg" style={{ flex: 1 }} onClick={() => handleMark('false_alarm')}>设为误报</Button>
-            <Button variant="primary" size="lg" style={{ flex: 1 }} onClick={() => handleMark('handled')}>设为已处理</Button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+            <Button variant="primary" size="lg" style={{ width: '100%' }} onClick={() => handleMark('acknowledged')}>确认处理（取消上报）</Button>
+            <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+              <Button variant="secondary" size="sm" style={{ flex: 1 }} onClick={() => handleMark('false_alarm')}>设为误报</Button>
+              <Button variant="secondary" size="sm" style={{ flex: 1 }} onClick={() => handleMark('handled')}>设为已处理</Button>
+            </div>
           </div>
         )}
 
