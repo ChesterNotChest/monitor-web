@@ -14,7 +14,7 @@ import { SeverityLabel, SeverityBadgeLevel } from '../api/enums';
 
 export default function MainDashboard() {
   const navigate = useNavigate();
-  const { alerts } = useAlerts();
+  const { alerts, refresh: refreshAlerts } = useAlerts();
   const { cameras: contextCameras, updateCamera, removeCamera } = useCameras();
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -139,6 +139,10 @@ export default function MainDashboard() {
           <div style={{display:'flex',alignItems:'center',gap:'var(--space-4)',marginBottom:'var(--space-2)'}}>
             <span style={{fontSize:'var(--text-base)',fontWeight:'var(--font-semibold)',color:'var(--text-primary)'}}>监控视图</span>
             <Button variant="primary" size="sm" icon={PlusCircle} onClick={openCreate}>创建监控视图</Button>
+            <Button variant="secondary" size="sm" onClick={async () => {
+              try { await client.debugTriggerAlert(); alert('测试告警已触发，请检查钉钉群'); refreshAlerts(); }
+              catch (e) { alert('触发失败: ' + (e instanceof Error ? e.message : String(e))); }
+            }}>🔔 Debug 告警</Button>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'var(--space-4)',overflowY:'auto',alignContent:'start',maxHeight:440}}>
             {loading ? (

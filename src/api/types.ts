@@ -37,6 +37,8 @@ export interface UserResponse {
   username: string;
   role: string;
   is_active: boolean;
+  supervisor_id?: number | null;
+  dingtalk_mobile?: string | null;
 }
 
 export interface LoginResponse {
@@ -55,6 +57,10 @@ export interface AlertResponse {
   exception_id: number;
   recording_id: number | null;
   timestamp: string;
+  status?: string;
+  exception_name?: string;
+  view_name?: string;
+  severity?: string;
 }
 
 export type AlertListResponse = PaginatedResponse<AlertResponse>;
