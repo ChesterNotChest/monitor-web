@@ -35,35 +35,38 @@ export default function UserManagement() {
   const user = users.find(u => u.id === selected);
 
   // Add
-  const [addForm, setAddForm] = useState({ username: '', password: '', role: 'security_guard' });
+  const [addForm, setAddForm] = useState({ username: '', password: '', role: 'security_guard', dingtalk_mobile: '', supervisor_id: 0 });
   const doAdd = async () => {
     if (!addForm.username.trim() || !addForm.password) return;
     setActionLoading(true);
     try {
-      await client.createUser(addForm.username, addForm.password, addForm.role);
-      setShowAdd(false); setAddForm({ username: '', password: '', role: 'security_guard' });
+      await client.createUser(addForm.username, addForm.password, addForm.role,
+        addForm.dingtalk_mobile || undefined, addForm.supervisor_id || undefined);
+      setShowAdd(false); setAddForm({ username: '', password: '', role: 'security_guard', dingtalk_mobile: '', supervisor_id: 0 });
       await fetchUsers();
-    } catch { /* ignore */ }
+    } catch (e) { alert('保存失败: ' + (e instanceof Error ? e.message : String(e))); }
     finally { setActionLoading(false); }
   };
 
   // Edit
-  const [editForm, setEditForm] = useState({ username: '', role: '' });
+  const [editForm, setEditForm] = useState({ username: '', role: '', dingtalk_mobile: '', supervisor_id: 0 });
   const openEdit = () => {
     if (!user) return;
-    setEditForm({ username: user.username, role: user.role });
+    setEditForm({ username: user.username, role: user.role, dingtalk_mobile: user.dingtalk_mobile || '', supervisor_id: user.supervisor_id || 0 });
     setShowEdit(true);
   };
   const doEdit = async () => {
     if (!user) return;
     setActionLoading(true);
     try {
-      if (editForm.role !== user.role) {
-        await client.updateUserRole(user.id, editForm.role);
-      }
+      await client.updateUser(user.id, {
+        role: editForm.role !== user.role ? editForm.role : undefined,
+        dingtalk_mobile: editForm.dingtalk_mobile || undefined,
+        supervisor_id: editForm.supervisor_id || 0,
+      });
       setShowEdit(false);
       await fetchUsers();
-    } catch { /* ignore */ }
+    } catch (e) { alert('保存失败: ' + (e instanceof Error ? e.message : String(e))); }
     finally { setActionLoading(false); }
   };
 
@@ -140,6 +143,8 @@ export default function UserManagement() {
               <div style={{ fontSize: 'var(--text-lg)', color: 'var(--text-secondary)' }}>用户名：<span style={{ color: 'var(--text-primary)', fontWeight: 'var(--font-medium)' }}>{user.username}</span></div>
               <div style={{ fontSize: 'var(--text-lg)', color: 'var(--text-secondary)' }}>角色：<span style={{ color: 'var(--text-primary)', fontWeight: 'var(--font-medium)' }}>{roleLabel[user.role] || user.role}</span></div>
               <div style={{ fontSize: 'var(--text-lg)', color: 'var(--text-secondary)' }}>账号状态：<span style={{ color: user.is_active ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 'var(--font-medium)' }}>{user.is_active ? '正常' : '已停用'}</span></div>
+              <div style={{ fontSize: 'var(--text-lg)', color: 'var(--text-secondary)' }}>钉钉手机：<span style={{ color: 'var(--text-primary)' }}>{user.dingtalk_mobile || '未绑定'}</span></div>
+              <div style={{ fontSize: 'var(--text-lg)', color: 'var(--text-secondary)' }}>上级：<span style={{ color: 'var(--text-primary)' }}>{users.find(u => u.id === user.supervisor_id)?.username || '未设置'}</span></div>
             </div>
             <Button variant="secondary" icon={Edit3} style={{ width: '100%' }} onClick={openEdit} disabled={actionLoading}>修改信息</Button>
             <Button variant="secondary" icon={Shield} style={{ width: '100%' }} onClick={() => setShowRole(true)} disabled={actionLoading}>角色管理</Button>
@@ -155,6 +160,13 @@ export default function UserManagement() {
           <select style={inputStyle} value={addForm.role} onChange={e => setAddForm(f => ({ ...f, role: e.target.value }))}>
             <option value="security_guard">安全员</option><option value="manager">管理员</option><option value="operator">运维员</option>
           </select>
+          <input style={inputStyle} placeholder="钉钉手机号（可选）" value={addForm.dingtalk_mobile} onChange={e => setAddForm(f => ({ ...f, dingtalk_mobile: e.target.value }))} />
+          {addForm.role === 'security_guard' && (
+            <select style={inputStyle} value={addForm.supervisor_id} onChange={e => setAddForm(f => ({ ...f, supervisor_id: Number(e.target.value) }))}>
+              <option value={0}>上级（可选）</option>
+              {users.filter(u => u.role === 'manager').map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
+            </select>
+          )}
           <Button variant="primary" style={{ width: '100%' }} onClick={doAdd} disabled={actionLoading}>确认添加</Button>
         </Modal>
       )}
@@ -165,6 +177,13 @@ export default function UserManagement() {
           <select style={inputStyle} value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>
             <option value="security_guard">安全员</option><option value="manager">管理员</option><option value="operator">运维员</option>
           </select>
+          <input style={inputStyle} placeholder="钉钉手机号" value={editForm.dingtalk_mobile} onChange={e => setEditForm(f => ({ ...f, dingtalk_mobile: e.target.value }))} />
+          {user?.role === 'security_guard' && (
+            <select style={inputStyle} value={editForm.supervisor_id} onChange={e => setEditForm(f => ({ ...f, supervisor_id: Number(e.target.value) }))}>
+              <option value={0}>上级（无）</option>
+              {users.filter(u => u.role === 'manager' && u.id !== user?.id).map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
+            </select>
+          )}
           <Button variant="primary" style={{ width: '100%' }} onClick={doEdit} disabled={actionLoading}>保存修改</Button>
         </Modal>
       )}

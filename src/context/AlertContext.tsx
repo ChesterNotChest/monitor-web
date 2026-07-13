@@ -6,6 +6,7 @@ import * as client from '../api/client';
 interface AlertCtx {
   alerts: AlertResponse[];
   loading: boolean;
+  refresh: () => void;
   markHandled: (id: number) => Promise<void>;
   markFalseAlarm: (id: number) => Promise<void>;
 }
@@ -13,6 +14,7 @@ interface AlertCtx {
 const Ctx = createContext<AlertCtx>({
   alerts: [],
   loading: false,
+  refresh: () => {},
   markHandled: () => Promise.resolve(),
   markFalseAlarm: () => Promise.resolve(),
 });
@@ -63,7 +65,7 @@ export function AlertProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ alerts, loading, markHandled, markFalseAlarm }}>
+    <Ctx.Provider value={{ alerts, loading, refresh, markHandled, markFalseAlarm }}>
       {children}
     </Ctx.Provider>
   );

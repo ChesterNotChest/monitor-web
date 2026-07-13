@@ -127,6 +127,14 @@ export async function fetchAlerts(page = 1, pageSize = 20): Promise<AlertListRes
   return baseFetch<AlertListResponse>(`/alerts${qs({ page, page_size: pageSize })}`);
 }
 
+export async function debugTriggerAlert(): Promise<void> {
+  await baseFetch<{ ok: boolean }>('/alerts/debug-test', { method: 'POST' });
+}
+
+export async function acknowledgeAlert(id: number): Promise<void> {
+  await baseFetch<{ ok: boolean }>(`/alerts/${id}/acknowledge`, { method: 'PUT' });
+}
+
 export async function markAlertHandled(id: number): Promise<void> {
   await baseFetch<{ ok: boolean }>(`/alerts/${id}/handle`, { method: 'PUT' });
 }
@@ -474,12 +482,24 @@ export async function fetchUsers(): Promise<UserResponse[]> {
   return baseFetch<UserResponse[]>('/users');
 }
 
-export async function createUser(username: string, password: string, role: string): Promise<UserResponse> {
-  return baseFetch<UserResponse>(`/users${qs({ username, password, role })}`, { method: 'POST' });
+export async function createUser(
+  username: string, password: string, role: string,
+  dingtalk_mobile?: string, supervisor_id?: number,
+): Promise<UserResponse> {
+  const params: Record<string, string | number> = { username, password, role };
+  if (dingtalk_mobile) params.dingtalk_mobile = dingtalk_mobile;
+  if (supervisor_id) params.supervisor_id = supervisor_id;
+  return baseFetch<UserResponse>(`/users${qs(params)}`, { method: 'POST' });
 }
 
-export async function updateUserRole(id: number, role: string): Promise<UserResponse> {
-  return baseFetch<UserResponse>(`/users/${id}/role${qs({ role })}`, { method: 'PUT' });
+export async function updateUser(
+  id: number, data: { role?: string; dingtalk_mobile?: string; supervisor_id?: number | null }
+): Promise<UserResponse> {
+  const params: Record<string, string | number> = {};
+  if (data.role) params.role = data.role;
+  if (data.dingtalk_mobile !== undefined) params.dingtalk_mobile = data.dingtalk_mobile;
+  if (data.supervisor_id !== undefined) params.supervisor_id = data.supervisor_id || '';
+  return baseFetch<UserResponse>(`/users/${id}${qs(params)}`, { method: 'PUT' });
 }
 
 export async function deactivateUser(id: number): Promise<void> {
