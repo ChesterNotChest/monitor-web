@@ -34,7 +34,7 @@ export default function FenceEditor() {
 
   // Add fence form
   const [showAdd, setShowAdd] = useState(false);
-  const [addForm, setAddForm] = useState({ name: '', dwell_time: 10, density: 0.6, leave_frames: 5 });
+  const [addForm, setAddForm] = useState({ name: '', dwell_time: 10, density: 0.6, leave_frames: 5, safe_distance: 0, entry_delay_seconds: 0 });
 
   const fetchData = useCallback(async () => {
     setLoading(true); setError('');
@@ -126,12 +126,14 @@ export default function FenceEditor() {
         dwell_time: addForm.dwell_time,
         density: addForm.density,
         leave_frames: addForm.leave_frames,
+        safe_distance: addForm.safe_distance ?? 0,
+        entry_delay_seconds: addForm.entry_delay_seconds ?? 0,
       };
       console.log('[FenceEditor] createFence', body);
       const saved = await client.createFence(body);
       setShowAdd(false);
       setDrawPoints([]);
-      setAddForm({ name: '', dwell_time: 10, density: 0.6, leave_frames: 5 });
+      setAddForm({ name: '', dwell_time: 10, density: 0.6, leave_frames: 5, safe_distance: 0, entry_delay_seconds: 0 });
       // Optimistic: add the saved fence to local list immediately
       setFences(prev => [...prev, saved]);
     } catch (e) {
@@ -217,7 +219,7 @@ export default function FenceEditor() {
               <div>
                 <div style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-medium)', color: 'var(--text-primary)' }}>{f.name}</div>
                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: 2 }}>
-                  {f.coords.length}点 · 停留{f.dwell_time}s · 密度{f.density}
+                  {f.coords.length}点 · 停留{f.dwell_time}s · 密度{f.density}{f.safe_distance > 0 ? ` · 安全${f.safe_distance}px` : ''}{f.entry_delay_seconds > 0 ? ` · 延迟${f.entry_delay_seconds}s` : ''}
                 </div>
               </div>
               <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); doDelete(f.id); }} disabled={actionLoading}>
@@ -251,6 +253,12 @@ export default function FenceEditor() {
           <div style={{ marginBottom: 'var(--space-3)' }}><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>离开判定帧数</label>
             <input style={inputStyle} type="number" value={addForm.leave_frames}
               onChange={e => setAddForm(f => ({ ...f, leave_frames: Number(e.target.value) }))} /></div>
+          <div style={{ marginBottom: 'var(--space-3)' }}><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>安全距离（像素，0=禁用TOO_CLOSE）</label>
+            <input style={inputStyle} type="number" min="0" value={addForm.safe_distance ?? 0}
+              onChange={e => setAddForm(f => ({ ...f, safe_distance: Number(e.target.value) }))} /></div>
+          <div style={{ marginBottom: 'var(--space-3)' }}><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>进入延迟（秒，0=立即触发）</label>
+            <input style={inputStyle} type="number" min="0" value={addForm.entry_delay_seconds ?? 0}
+              onChange={e => setAddForm(f => ({ ...f, entry_delay_seconds: Number(e.target.value) }))} /></div>
           <Button variant="primary" style={{ width: '100%' }} onClick={doAdd} disabled={actionLoading || drawPoints.length < 4}>
             保存围栏
           </Button>

@@ -185,6 +185,8 @@ export interface FenceCreate {
   dwell_time?: number;
   density?: number;
   leave_frames?: number;
+  safe_distance?: number;
+  entry_delay_seconds?: number;
 }
 
 export interface FenceResponse {
@@ -195,6 +197,8 @@ export interface FenceResponse {
   dwell_time: number;
   density: number;
   leave_frames: number;
+  safe_distance: number;
+  entry_delay_seconds: number;
 }
 
 // ══════════════════════════════════════════════
