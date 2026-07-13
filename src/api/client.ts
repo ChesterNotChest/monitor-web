@@ -186,7 +186,7 @@ export async function fetchDashboardTrends(): Promise<DashboardTrends> {
 // ══════════════════════════════════════════════
 
 export async function fetchNodes(): Promise<NodeResponse[]> {
-  const data = await baseFetch<{ nodes: NodeResponse[] }>('/nodes');
+  const data = await baseFetch<{ nodes: NodeResponse[] }>('/nodes/');
   return data.nodes;
 }
 
@@ -420,7 +420,7 @@ export async function fetchViewById(id: number): Promise<ViewResponse> {
 }
 
 export async function deleteView(id: number): Promise<void> {
-  await baseFetch<void>(`/views/${id}/`, { method: 'DELETE' });
+  await baseFetch<void>(`/views/${id}`, { method: 'DELETE' });
 }
 
 // ══════════════════════════════════════════════
