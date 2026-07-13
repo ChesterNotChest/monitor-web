@@ -447,7 +447,7 @@ export async function fetchViewById(id: number): Promise<ViewResponse> {
 }
 
 export async function deleteView(id: number): Promise<void> {
-  await baseFetch<void>(`/views/${id}`, { method: 'DELETE' });
+  await baseFetch<void>(`/views/${id}/`, { method: 'DELETE' });
 }
 
 // ══════════════════════════════════════════════
