@@ -12,6 +12,9 @@ import { SeverityLabel, SeverityBadgeLevel, SeverityLevel } from '../api/enums';
 export default function ExceptionSettings() {
   const [exceptions, setExceptions] = useState<ExceptionResponse[]>([]);
   const [alertGroups, setAlertGroups] = useState<AlertGroupResponse[]>([]);
+  const [entityTypes, setEntityTypes] = useState<DetectionTypeResponse[]>([]);
+  const [actionTypes, setActionTypes] = useState<DetectionTypeResponse[]>([]);
+  const [soundTypes, setSoundTypes] = useState<DetectionTypeResponse[]>([]);
   const [fenceEventTypes, setFenceEventTypes] = useState<DetectionTypeResponse[]>([]);
   const [faceResults, setFaceResults] = useState<DetectionTypeResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,14 +28,20 @@ export default function ExceptionSettings() {
     setLoading(true);
     setError('');
     try {
-      const [data, groups, fenceTypes, faceRes] = await Promise.all([
+      const [data, groups, entities, actions, sounds, fenceTypes, faceRes] = await Promise.all([
         client.fetchExceptions(),
         client.fetchAlertGroups(),
+        client.fetchEntityTypes(),
+        client.fetchActionTypes(),
+        client.fetchSoundTypes(),
         client.fetchFenceEventTypes(),
         client.fetchFaceRecognitionResults(),
       ]);
       setExceptions(data);
       setAlertGroups(groups);
+      setEntityTypes(entities);
+      setActionTypes(actions);
+      setSoundTypes(sounds);
       setFenceEventTypes(fenceTypes);
       setFaceResults(faceRes);
     } catch (e) {
@@ -47,24 +56,24 @@ export default function ExceptionSettings() {
   const selectedEx = exceptions.find(e => e.id === selected);
 
   // Add form
-  const [addForm, setAddForm] = useState<ExceptionCreate>({ name: '', severity: SeverityLevel.WARNING, group_id: null, face_result_id: null, fence_event_id: null, cooldown_seconds: 30, max_recording_seconds: 10, wind_down_seconds: 10});
+  const [addForm, setAddForm] = useState<ExceptionCreate>({ name: '', severity: SeverityLevel.WARNING, group_id: null, entity_ids: [], action_ids: [], sound_ids: [], face_result_id: null, fence_event_id: null, cooldown_seconds: 30, max_recording_seconds: 10, wind_down_seconds: 10});
   const doAdd = async () => {
     if (!addForm.name.trim()) return;
     setActionLoading(true);
     try {
       await client.createException(addForm);
       setShowAdd(false);
-      setAddForm({ name: '', severity: SeverityLevel.WARNING, group_id: null, face_result_id: null, fence_event_id: null, cooldown_seconds: 30, max_recording_seconds: 10, wind_down_seconds: 10});
+      setAddForm({ name: '', severity: SeverityLevel.WARNING, group_id: null, entity_ids: [], action_ids: [], sound_ids: [], face_result_id: null, fence_event_id: null, cooldown_seconds: 30, max_recording_seconds: 10, wind_down_seconds: 10});
       await fetchData();
     } catch { /* ignore */ }
     finally { setActionLoading(false); }
   };
 
   // Edit form
-  const [editForm, setEditForm] = useState<ExceptionCreate>({ name: '', severity: SeverityLevel.WARNING, group_id: null, face_result_id: null, fence_event_id: null, cooldown_seconds: 30, max_recording_seconds: 10, wind_down_seconds: 10});
+  const [editForm, setEditForm] = useState<ExceptionCreate>({ name: '', severity: SeverityLevel.WARNING, group_id: null, entity_ids: [], action_ids: [], sound_ids: [], face_result_id: null, fence_event_id: null, cooldown_seconds: 30, max_recording_seconds: 10, wind_down_seconds: 10});
   const openEdit = () => {
     if (!selectedEx) return;
-    setEditForm({ name: selectedEx.name, severity: selectedEx.severity, group_id: selectedEx.group_id, face_result_id: selectedEx.face_result_id, fence_event_id: selectedEx.fence_event_id, cooldown_seconds: selectedEx.cooldown_seconds ?? 30, max_recording_seconds: selectedEx.max_recording_seconds ?? 120, wind_down_seconds: selectedEx.wind_down_seconds ?? 30 });
+    setEditForm({ name: selectedEx.name, severity: selectedEx.severity, group_id: selectedEx.group_id, entity_ids: selectedEx.entity_ids ?? [], action_ids: selectedEx.action_ids ?? [], sound_ids: selectedEx.sound_ids ?? [], face_result_id: selectedEx.face_result_id, fence_event_id: selectedEx.fence_event_id, cooldown_seconds: selectedEx.cooldown_seconds ?? 30, max_recording_seconds: selectedEx.max_recording_seconds ?? 10, wind_down_seconds: selectedEx.wind_down_seconds ?? 10 });
     setShowEdit(true);
   };
   const doEdit = async () => {
@@ -158,6 +167,12 @@ export default function ExceptionSettings() {
           <select style={inputStyle} value={addForm.severity} onChange={e => setAddForm(f => ({ ...f, severity: Number(e.target.value) }))}>
             {Object.entries(SeverityLabel).map(([k, v]) => <option key={k} value={Number(k)}>{v}</option>)}
           </select>
+          <MultiSelect label="实体条件" options={entityTypes} selected={addForm.entity_ids ?? []}
+            onChange={ids => setAddForm(f => ({ ...f, entity_ids: ids }))} />
+          <MultiSelect label="行为条件" options={actionTypes} selected={addForm.action_ids ?? []}
+            onChange={ids => setAddForm(f => ({ ...f, action_ids: ids }))} />
+          <MultiSelect label="声音条件" options={soundTypes} selected={addForm.sound_ids ?? []}
+            onChange={ids => setAddForm(f => ({ ...f, sound_ids: ids }))} />
           <select style={inputStyle} value={addForm.face_result_id ?? ''} onChange={e => setAddForm(f => ({ ...f, face_result_id: e.target.value ? Number(e.target.value) : null }))}>
             <option value="">人脸识别条件（无）</option>
             {faceResults.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
@@ -168,10 +183,10 @@ export default function ExceptionSettings() {
           </select>
           <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>冷却时间（秒）</label>
             <input style={inputStyle} type="number" min="0" value={addForm.cooldown_seconds ?? 30} onChange={e => setAddForm(f => ({ ...f, cooldown_seconds: Number(e.target.value) }))} /></div>
-          <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>录制时间上限（秒，默认10）</label>
-            <input style={inputStyle} type="number" min="30" value={addForm.max_recording_seconds ?? 120} onChange={e => setAddForm(f => ({ ...f, max_recording_seconds: Number(e.target.value) }))} /></div>
-          <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>空闲等待（秒，默认10）</label>
-            <input style={inputStyle} type="number" min="0" value={addForm.wind_down_seconds ?? 30} onChange={e => setAddForm(f => ({ ...f, wind_down_seconds: Number(e.target.value) }))} /></div>
+          <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>录制时间上限（秒，0=不限）</label>
+            <input style={inputStyle} type="number" min="0" value={addForm.max_recording_seconds ?? 10} onChange={e => setAddForm(f => ({ ...f, max_recording_seconds: Number(e.target.value) }))} /></div>
+          <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>空闲等待（秒）</label>
+            <input style={inputStyle} type="number" min="0" value={addForm.wind_down_seconds ?? 10} onChange={e => setAddForm(f => ({ ...f, wind_down_seconds: Number(e.target.value) }))} /></div>
           <Button variant="primary" style={{ width: '100%' }} onClick={doAdd} disabled={actionLoading}>确认添加</Button>
         </Modal>
       )}
@@ -182,6 +197,12 @@ export default function ExceptionSettings() {
           <select style={inputStyle} value={editForm.severity} onChange={e => setEditForm(f => ({ ...f, severity: Number(e.target.value) }))}>
             {Object.entries(SeverityLabel).map(([k, v]) => <option key={k} value={Number(k)}>{v}</option>)}
           </select>
+          <MultiSelect label="实体条件" options={entityTypes} selected={editForm.entity_ids ?? []}
+            onChange={ids => setEditForm(f => ({ ...f, entity_ids: ids }))} />
+          <MultiSelect label="行为条件" options={actionTypes} selected={editForm.action_ids ?? []}
+            onChange={ids => setEditForm(f => ({ ...f, action_ids: ids }))} />
+          <MultiSelect label="声音条件" options={soundTypes} selected={editForm.sound_ids ?? []}
+            onChange={ids => setEditForm(f => ({ ...f, sound_ids: ids }))} />
           <select style={inputStyle} value={editForm.face_result_id ?? ''} onChange={e => setEditForm(f => ({ ...f, face_result_id: e.target.value ? Number(e.target.value) : null }))}>
             <option value="">人脸识别条件（无）</option>
             {faceResults.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
@@ -192,10 +213,10 @@ export default function ExceptionSettings() {
           </select>
           <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>冷却时间（秒）</label>
             <input style={inputStyle} type="number" min="0" value={editForm.cooldown_seconds ?? 30} onChange={e => setEditForm(f => ({ ...f, cooldown_seconds: Number(e.target.value) }))} /></div>
-          <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>录制时间上限（秒，默认10）</label>
-            <input style={inputStyle} type="number" min="30" value={editForm.max_recording_seconds ?? 120} onChange={e => setEditForm(f => ({ ...f, max_recording_seconds: Number(e.target.value) }))} /></div>
-          <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>空闲等待（秒，默认10）</label>
-            <input style={inputStyle} type="number" min="0" value={editForm.wind_down_seconds ?? 30} onChange={e => setEditForm(f => ({ ...f, wind_down_seconds: Number(e.target.value) }))} /></div>
+          <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>录制时间上限（秒，0=不限）</label>
+            <input style={inputStyle} type="number" min="0" value={editForm.max_recording_seconds ?? 10} onChange={e => setEditForm(f => ({ ...f, max_recording_seconds: Number(e.target.value) }))} /></div>
+          <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>空闲等待（秒）</label>
+            <input style={inputStyle} type="number" min="0" value={editForm.wind_down_seconds ?? 10} onChange={e => setEditForm(f => ({ ...f, wind_down_seconds: Number(e.target.value) }))} /></div>
           <Button variant="primary" style={{ width: '100%' }} onClick={doEdit} disabled={actionLoading}>保存修改</Button>
         </Modal>
       )}
@@ -203,9 +224,12 @@ export default function ExceptionSettings() {
   );
 }
 
-function ExceptionDetail({ selectedEx, alertGroups, fenceEventTypes, faceResults }: {
+function ExceptionDetail({ selectedEx, alertGroups, entityTypes, actionTypes, soundTypes, fenceEventTypes, faceResults }: {
   selectedEx: ExceptionResponse;
   alertGroups: AlertGroupResponse[];
+  entityTypes: DetectionTypeResponse[];
+  actionTypes: DetectionTypeResponse[];
+  soundTypes: DetectionTypeResponse[];
   fenceEventTypes: DetectionTypeResponse[];
   faceResults: DetectionTypeResponse[];
 }) {
@@ -216,27 +240,49 @@ function ExceptionDetail({ selectedEx, alertGroups, fenceEventTypes, faceResults
   const faceName = selectedEx.face_result_id != null
     ? faceResults.find(f => f.id === selectedEx.face_result_id)?.name ?? `#${selectedEx.face_result_id}`
     : null;
+  const entityNames = (selectedEx.entity_ids ?? []).map(id => entityTypes.find(e => e.id === id)?.name ?? `#${id}`).join(', ') || '无';
+  const actionNames = (selectedEx.action_ids ?? []).map(id => actionTypes.find(a => a.id === id)?.name ?? `#${id}`).join(', ') || '无';
+  const soundNames = (selectedEx.sound_ids ?? []).map(id => soundTypes.find(s => s.id === id)?.name ?? `#${id}`).join(', ') || '无';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', fontSize: 'var(--text-base)', color: 'var(--text-secondary)' }}>
       <div>名称：<span style={{ color: 'var(--text-primary)', fontWeight: 'var(--font-medium)' }}>{selectedEx.name}</span></div>
       <div>严重级别：<Badge level={SeverityBadgeLevel[selectedEx.severity as keyof typeof SeverityBadgeLevel] || 'warning'}>{SeverityLabel[selectedEx.severity as keyof typeof SeverityLabel] || selectedEx.severity}</Badge></div>
       <div>告警分组：<span style={{ color: 'var(--text-primary)' }}>{group ? group.name : selectedEx.group_id ? `#${selectedEx.group_id}` : '无'}</span></div>
-      {group && group.responses.length > 0 && (
-        <div>
-          <div style={{ marginBottom: 'var(--space-1)' }}>响应动作：</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)' }}>
-            {group.responses.map(r => (
-              <Badge key={r.id} level="neutral">{r.name}</Badge>
-            ))}
-          </div>
-        </div>
-      )}
+      <div>实体条件：<span style={{ color: 'var(--text-primary)' }}>{entityNames}</span></div>
+      <div>行为条件：<span style={{ color: 'var(--text-primary)' }}>{actionNames}</span></div>
+      <div>声音条件：<span style={{ color: 'var(--text-primary)' }}>{soundNames}</span></div>
       {faceName != null && <div>人脸识别结果：<span style={{ color: 'var(--text-primary)' }}>{faceName}</span></div>}
       {fenceName != null && <div>围栏事件类型：<span style={{ color: 'var(--text-primary)' }}>{fenceName}</span></div>}
       <div>冷却时间：<span style={{ color: 'var(--text-primary)' }}>{selectedEx.cooldown_seconds ?? 30} 秒</span></div>
       <div>录制上限：<span style={{ color: 'var(--text-primary)' }}>{selectedEx.max_recording_seconds ?? 10} 秒</span></div>
       <div>空闲等待：<span style={{ color: 'var(--text-primary)' }}>{selectedEx.wind_down_seconds ?? 10} 秒</span></div>
       <div>创建时间：<span style={{ color: 'var(--text-primary)', fontSize: 'var(--text-sm)' }}>{selectedEx.created_at}</span></div>
+    </div>
+  );
+}
+
+function MultiSelect({ label, options, selected, onChange }: {
+  label: string;
+  options: DetectionTypeResponse[];
+  selected: number[];
+  onChange: (ids: number[]) => void;
+}) {
+  const toggle = (id: number) => {
+    if (selected.includes(id)) onChange(selected.filter(x => x !== id));
+    else onChange([...selected, id]);
+  };
+  const labelStyle: React.CSSProperties = { fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginBottom: 'var(--space-1)' };
+  const chipWrap: React.CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)', marginBottom: 'var(--space-3)' };
+  const chip: React.CSSProperties = { padding: '2px 8px', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', cursor: 'pointer', border: '1px solid rgba(255,255,255,.15)', background: 'var(--bg-canvas)', color: 'var(--text-secondary)' };
+  const chipOn: React.CSSProperties = { ...chip, background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' };
+  return (
+    <div>
+      <div style={labelStyle}>{label}</div>
+      <div style={chipWrap}>
+        {options.map(o => (
+          <span key={o.id} style={selected.includes(o.id) ? chipOn : chip} onClick={() => toggle(o.id)}>{o.name}</span>
+        ))}
+      </div>
     </div>
   );
 }

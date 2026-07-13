@@ -167,6 +167,9 @@ export interface ExceptionCreate {
   name: string;
   severity: number;
   group_id?: number | null;
+  entity_ids?: number[];
+  action_ids?: number[];
+  sound_ids?: number[];
   face_result_id?: number | null;
   fence_event_id?: number | null;
   cooldown_seconds?: number;
@@ -179,6 +182,9 @@ export interface ExceptionResponse {
   name: string;
   severity: number;
   group_id: number | null;
+  entity_ids: number[];
+  action_ids: number[];
+  sound_ids: number[];
   face_result_id: number | null;
   fence_event_id: number | null;
   cooldown_seconds: number;

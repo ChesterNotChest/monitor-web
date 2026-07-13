@@ -59,11 +59,9 @@ export default function UserManagement() {
     if (!user) return;
     setActionLoading(true);
     try {
-      await client.updateUser(user.id, {
-        role: editForm.role !== user.role ? editForm.role : undefined,
-        dingtalk_mobile: editForm.dingtalk_mobile || undefined,
-        supervisor_id: editForm.supervisor_id || 0,
-      });
+      if (editForm.role !== user.role) {
+        await client.updateUserRole(user.id, editForm.role);
+      }
       setShowEdit(false);
       await fetchUsers();
     } catch (e) { alert('保存失败: ' + (e instanceof Error ? e.message : String(e))); }
