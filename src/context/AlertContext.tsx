@@ -32,7 +32,10 @@ export function AlertProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     try {
       const data = await client.fetchAlerts(1, 50);
-      setAlerts(data.items);
+      // 过滤已处理/误报 — 后端不过滤，前端兜底
+      setAlerts(data.items.filter(a =>
+        a.status !== 'handled' && a.status !== 'false_alarm'
+      ));
     } catch {
       // Silently ignore
     } finally {

@@ -95,7 +95,7 @@ export default function LiveMonitor() {
             )}
           </div>
         ) : (
-          <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }} playsInline autoPlay />
+          <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }} playsInline autoPlay muted />
         )}
       </div>
 
