@@ -90,8 +90,8 @@ export const seedFences: FenceResponse[] = [
     name: '围栏1',
     view_id: 1,
     coords: [[0, 0], [200, 0], [200, 150], [0, 150]],
-    dwell_time: 10,
-    density: 0.6,
+    safe_distance: 0,
+    entry_delay_seconds: 0,
     leave_frames: 5,
   },
 ];

@@ -203,8 +203,8 @@ export interface FenceCreate {
   name: string;
   view_id: number;
   coords: number[][];
-  dwell_time?: number;
-  density?: number;
+  safe_distance?: number;
+  entry_delay_seconds?: number;
   leave_frames?: number;
 }
 
@@ -213,8 +213,8 @@ export interface FenceResponse {
   name: string;
   view_id: number;
   coords: number[][];
-  dwell_time: number;
-  density: number;
+  safe_distance: number;
+  entry_delay_seconds: number;
   leave_frames: number;
 }
 
