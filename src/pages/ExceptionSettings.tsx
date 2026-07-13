@@ -148,7 +148,7 @@ export default function ExceptionSettings() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
             <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--font-bold)', color: 'var(--text-primary)' }}>详情</h3>
           </div>
-          {selectedEx ? <ExceptionDetail selectedEx={selectedEx} alertGroups={alertGroups} fenceEventTypes={fenceEventTypes} faceResults={faceResults} /> : (
+          {selectedEx ? <ExceptionDetail selectedEx={selectedEx} alertGroups={alertGroups} entityTypes={entityTypes} actionTypes={actionTypes} soundTypes={soundTypes} fenceEventTypes={fenceEventTypes} faceResults={faceResults} /> : (
             <div style={{ color: 'var(--text-disabled)', textAlign: 'center', padding: 'var(--space-8)' }}>
               请选择左侧异常类型
             </div>
@@ -166,6 +166,10 @@ export default function ExceptionSettings() {
           <input style={inputStyle} placeholder="异常名称" value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} />
           <select style={inputStyle} value={addForm.severity} onChange={e => setAddForm(f => ({ ...f, severity: Number(e.target.value) }))}>
             {Object.entries(SeverityLabel).map(([k, v]) => <option key={k} value={Number(k)}>{v}</option>)}
+          </select>
+          <select style={inputStyle} value={addForm.group_id ?? ''} onChange={e => setAddForm(f => ({ ...f, group_id: e.target.value ? Number(e.target.value) : null }))}>
+            <option value="">告警分组（必选）</option>
+            {alertGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
           <MultiSelect label="实体条件" options={entityTypes} selected={addForm.entity_ids ?? []}
             onChange={ids => setAddForm(f => ({ ...f, entity_ids: ids }))} />
