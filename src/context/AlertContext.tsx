@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef } f
 import type { ReactNode } from 'react';
 import type { AlertResponse } from '../api/types';
 import * as client from '../api/client';
+import { config } from '../api/config';
 
 interface AlertCtx {
   alerts: AlertResponse[];
@@ -19,49 +20,90 @@ const Ctx = createContext<AlertCtx>({
   markFalseAlarm: () => Promise.resolve(),
 });
 
-const POLL_INTERVAL = 30_000; // 30 seconds
+const POLL_INTERVAL = 30_000;
 
 export function AlertProvider({ children }: { children: ReactNode }) {
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refresh = useCallback(async () => {
     try {
       const data = await client.fetchAlerts(1, 50);
       setAlerts(data.items);
     } catch {
-      // Silently ignore poll errors
+      // Silently ignore
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Initial fetch + start polling
-  useEffect(() => {
-    refresh();
-    intervalRef.current = setInterval(refresh, POLL_INTERVAL);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+  // WSS connection
+  const connectWss = useCallback(() => {
+    const token = localStorage.getItem('access-token');
+    if (!token) return;
+
+    const wsUrl = `${config.serverBaseUrl.replace(/^http/, 'ws')}/ws/alerts?token=${token}`;
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      // WSS connected — stop REST polling
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    };
+
+    ws.onmessage = (e) => {
+      try {
+        const alert: AlertResponse = JSON.parse(e.data);
+        setAlerts(prev => [alert, ...prev].slice(0, 50));
+        setLoading(false);
+      } catch { /* ignore parse errors */ }
+    };
+
+    ws.onclose = () => {
+      wsRef.current = null;
+      // Fallback to REST polling
+      if (!pollRef.current) {
+        refresh();
+        pollRef.current = setInterval(refresh, POLL_INTERVAL);
+      }
+      // Reconnect WSS after 10s
+      reconnectRef.current = setTimeout(connectWss, 10_000);
+    };
+
+    ws.onerror = () => {
+      ws.close();
     };
   }, [refresh]);
+
+  useEffect(() => {
+    // Initial REST fetch while WSS is connecting
+    refresh();
+    pollRef.current = setInterval(refresh, POLL_INTERVAL);
+    // Start WSS
+    connectWss();
+
+    return () => {
+      if (wsRef.current) wsRef.current.close();
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (reconnectRef.current) clearTimeout(reconnectRef.current);
+    };
+  }, [connectWss]);
 
   const markHandled = useCallback(async (id: number) => {
     try {
       await client.markAlertHandled(id);
       setAlerts(prev => prev.filter(a => a.id !== id));
-    } catch {
-      // Silently ignore — alert stays in list
-    }
+    } catch { /* ignore */ }
   }, []);
 
   const markFalseAlarm = useCallback(async (id: number) => {
     try {
       await client.markAlertFalseAlarm(id);
       setAlerts(prev => prev.filter(a => a.id !== id));
-    } catch {
-      // Silently ignore — alert stays in list
-    }
+    } catch { /* ignore */ }
   }, []);
 
   return (
