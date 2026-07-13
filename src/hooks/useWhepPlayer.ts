@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useWebRTC } from '../context/WebRTCContext';
 
 interface WhepState {
   status: 'idle' | 'connecting' | 'playing' | 'error';
@@ -7,117 +8,63 @@ interface WhepState {
 
 /**
  * WebRTC WHEP 直播播放器 hook。
- * 传入 webrtc_url (SRS WHEP endpoint)，按 WHEP 协议完成握手并挂载到 <video> 元素。
+ * 使用 WebRTCContext 连接池 —— 挂载时 acquire(url)，卸载时 release(url)。
  */
 export function useWhepPlayer(
   videoRef: React.RefObject<HTMLVideoElement | null>,
   webrtcUrl: string | null | undefined,
 ) {
-  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const { acquire, release } = useWebRTC();
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentUrl = useRef<string | null>(null);
   const [state, setState] = useState<WhepState>({ status: 'idle', error: '' });
 
-  const doConnect = useCallback(() => {
+  const connect = useCallback(() => {
     if (!webrtcUrl) {
       console.log('[WHEP] skip: no URL');
       return;
     }
     if (!videoRef.current) {
       console.log('[WHEP] video element not ready, retry in 200ms');
-      retryTimer.current = setTimeout(() => doConnect(), 200);
+      retryTimer.current = setTimeout(() => connect(), 200);
       return;
     }
 
-    // Cleanup previous
-    if (pcRef.current) {
-      pcRef.current.close();
-      pcRef.current = null;
-    }
+    if (currentUrl.current === webrtcUrl) return; // 已在用
+    if (currentUrl.current) release(currentUrl.current); // 释放旧的
 
-    console.log('[WHEP] connecting to:', webrtcUrl);
+    currentUrl.current = webrtcUrl;
+    console.log('[WHEP] acquiring:', webrtcUrl);
     setState({ status: 'connecting', error: '' });
 
-    const pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-    });
-
-    pc.addTransceiver('video', { direction: 'recvonly' });
-    pc.addTransceiver('audio', { direction: 'recvonly' });
-
-    pc.ontrack = (e: RTCTrackEvent) => {
-      const v = videoRef.current;
-      if (v && e.streams[0]) {
-        console.log('[WHEP] track received, playing');
-        v.srcObject = e.streams[0];
-        setState({ status: 'playing', error: '' });
-      }
-    };
-
-    pc.oniceconnectionstatechange = () => {
-      console.log('[WHEP] ICE state:', pc.iceConnectionState);
-      if (
-        pc.iceConnectionState === 'failed' ||
-        pc.iceConnectionState === 'disconnected'
-      ) {
-        setState((s) =>
-          s.status === 'playing' ? s : { status: 'error', error: 'ICE 连接失败' },
-        );
-      }
-    };
-
-    pcRef.current = pc;
-
-    // WHEP handshake: client sends offer first
-    (async () => {
-      try {
-        const offer = await pc.createOffer({
-          offerToReceiveVideo: true,
-          offerToReceiveAudio: true,
-        });
-        await pc.setLocalDescription(offer);
-        console.log('[WHEP] offer created, POST to SRS...');
-
-        const ctrl = new AbortController();
-        const timeout = setTimeout(() => ctrl.abort(), 8000);
-        const resp = await fetch(webrtcUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/sdp' },
-          body: pc.localDescription!.sdp,
-          signal: ctrl.signal,
-        });
-        clearTimeout(timeout);
-        if (!resp.ok) {
-          const errText = await resp.text().catch(() => '');
-          throw new Error(`SRS returned ${resp.status}${errText ? ': ' + errText : ''}`);
-        }
-        const answerSdp = await resp.text();
-        console.log('[WHEP] answer received, len=%d', answerSdp.length);
-        if (!answerSdp) throw new Error('SRS returned empty answer');
-
-        await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
-        console.log('[WHEP] remote description set');
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : 'WHEP 握手失败';
-        console.error('[WHEP] error:', msg);
+    acquire(webrtcUrl).then((result) => {
+      if ('error' in result) {
+        const msg = result.error;
+        console.error('[WHEP] acquire failed:', msg);
         setState({ status: 'error', error: msg });
-        pc.close();
-        pcRef.current = null;
+        currentUrl.current = null;
+        return;
       }
-    })();
-  }, [webrtcUrl]);
+      const v = videoRef.current;
+      if (v) {
+        v.srcObject = result.stream;
+        console.log('[WHEP] playing');
+      }
+      setState({ status: 'playing', error: '' });
+    });
+  }, [webrtcUrl, acquire, release]);
 
-  // Auto-connect when URL changes (ignores videoRef to avoid stale ref issue)
   useEffect(() => {
     if (retryTimer.current) clearTimeout(retryTimer.current);
-    doConnect();
+    connect();
     return () => {
       if (retryTimer.current) clearTimeout(retryTimer.current);
-      if (pcRef.current) {
-        pcRef.current.close();
-        pcRef.current = null;
+      if (currentUrl.current) {
+        release(currentUrl.current);
+        currentUrl.current = null;
       }
     };
-  }, [doConnect]);
+  }, [connect, release]);
 
-  return { ...state, connect: doConnect };
+  return { ...state, connect };
 }
