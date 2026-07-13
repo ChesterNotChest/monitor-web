@@ -13,6 +13,8 @@ import type {
   DashboardTrends,
   DetectionTypeCreate,
   DetectionTypeResponse,
+  DeviceCreateRequest,
+  DeviceCreateResponse,
   EventListResponse,
   EventResponse,
   ExceptionCreate,
@@ -210,6 +212,31 @@ export async function fetchNodeHealth(nodeId: number): Promise<NodeHealthRespons
 
 export async function onboardDevice(nodeId: number): Promise<void> {
   await baseFetch<{ ok: boolean }>(`/devices/nodes/${nodeId}/onboard/`, { method: 'POST' });
+}
+
+export async function createStreamDevice(
+  nodeId: number,
+  body: DeviceCreateRequest,
+): Promise<DeviceCreateResponse> {
+  return baseFetch<DeviceCreateResponse>(`/nodes/${nodeId}/devices/`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function fetchStreamDevices(nodeId: number): Promise<DeviceCreateResponse[]> {
+  return baseFetch<DeviceCreateResponse[]>(`/nodes/${nodeId}/devices/`);
+}
+
+export async function deleteStreamDevice(
+  nodeId: number,
+  deviceId: number,
+  deviceType: string = 'video',
+): Promise<void> {
+  await baseFetch<void>(
+    `/nodes/${nodeId}/devices/${deviceId}/?device_type=${encodeURIComponent(deviceType)}`,
+    { method: 'DELETE' },
+  );
 }
 
 // ══════════════════════════════════════════════

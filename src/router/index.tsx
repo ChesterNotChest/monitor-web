@@ -18,6 +18,7 @@ const ExceptionSettings = lazy(() => import('../pages/ExceptionSettings'));
 const WeeklyReportDetail = lazy(() => import('../pages/WeeklyReportDetail'));
 const DetectionSettings = lazy(() => import('../pages/DetectionSettings'));
 const EventStats = lazy(() => import('../pages/EventStats'));
+const StreamManagement = lazy(() => import('../pages/StreamManagement'));
 
 function PageFallback() {
   return <div style={{ padding: 'var(--space-6)' }}><Skeleton variant="card" count={3} /></div>;
@@ -53,6 +54,7 @@ const protectedRoutes = [
   { path: '/exception-settings', element: <LazyPage Component={ExceptionSettings} /> },
   { path: '/detection-settings', element: <LazyPage Component={DetectionSettings} /> },
   { path: '/event-stats', element: <LazyPage Component={EventStats} /> },
+  { path: '/streams', element: <LazyPage Component={StreamManagement} /> },
 ];
 
 export const router = createBrowserRouter([

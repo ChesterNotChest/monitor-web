@@ -130,6 +130,7 @@ export interface VideoDeviceResponse {
   name: string;
   node_id: number;
   streaming: boolean;
+  stream_url: string | null;
 }
 
 export interface AudioDeviceResponse {
@@ -142,6 +143,7 @@ export interface AudioDeviceResponse {
 export interface NodeResponse {
   id: number;
   is_connected: boolean;
+  is_virtual: boolean;
   last_seen: string | null;
 }
 
@@ -283,14 +285,14 @@ export interface DeepSeekDailyReportRequest {
 // ══════════════════════════════════════════════
 
 export interface ViewCreateRequest {
-  audio_id: number;
+  audio_id: number | null;
   video_id: number;
 }
 
 export interface ViewResponse {
   id: number;
   name: string | null;
-  audio_id: number;
+  audio_id: number | null;
   video_id: number;
   cache_path: string | null;
   created_at: string | null;
@@ -393,4 +395,22 @@ export interface RecordingResponse {
   file_path: string;
   start_time: string;
   end_time: string | null;
+}
+
+// ══════════════════════════════════════════════
+// Custom Stream Device (device_schema.py)
+// ══════════════════════════════════════════════
+
+export interface DeviceCreateRequest {
+  device_type: 'video' | 'audio';
+  name: string;
+  stream_url: string;
+}
+
+export interface DeviceCreateResponse {
+  id: number;
+  name: string;
+  device_type: string;
+  node_id: number;
+  stream_url: string | null;
 }

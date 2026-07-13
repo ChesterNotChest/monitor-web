@@ -5,8 +5,6 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Panel } from '../components/ui/Panel';
 import { Skeleton } from '../components/ui/Skeleton';
-import { useCameras } from '../context/CameraContext';
-import type { CameraView } from '../context/CameraContext';
 import * as client from '../api/client';
 import type { NodeResponse } from '../api/types';
 
@@ -14,31 +12,33 @@ export default function DeviceInfo() {
   const [nodes, setNodes] = useState<NodeResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const { addCamera } = useCameras();
 
   // Add view state
   const [showPanel, setShowPanel] = useState(false);
-  const [selectedVideo, setSelectedVideo] = useState<{name:string;nodeId:number} | null>(null);
-  const [selectedAudio, setSelectedAudio] = useState<{name:string;nodeId:number} | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<{id:number;name:string;nodeId:number} | null>(null);
+  const [selectedAudio, setSelectedAudio] = useState<{id:number;name:string;nodeId:number} | null>(null);
   const [viewName, setViewName] = useState('');
   const [pickerMode, setPickerMode] = useState<'video' | 'audio' | null>(null);
 
-  // Real device lists from API (fetched on mount, refreshed when nodes change)
-  const [allVideos, setAllVideos] = useState<{id:number;name:string;nodeId:number;nodeName:string;streaming:boolean}[]>([]);
+  // Real device lists from API
+  const [allVideos, setAllVideos] = useState<{id:number;name:string;nodeId:number;nodeName:string;streaming:boolean;streamUrl:string|null}[]>([]);
   const [allAudios, setAllAudios] = useState<{id:number;name:string;nodeId:number;nodeName:string;streaming:boolean}[]>([]);
+
+  // Create view status
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const fetchData = async () => {
     setLoading(true); setError('');
     try {
       const nodeList = await client.fetchNodes();
       setNodes(nodeList);
-      // Fetch devices for each node
       const vAll: any[] = []; const aAll: any[] = [];
       await Promise.all(nodeList.map(async n => {
         const v = await client.fetchNodeVideos(n.id).catch(() => []);
         const a = await client.fetchNodeAudios(n.id).catch(() => []);
-        v.forEach((d: any) => vAll.push({...d, nodeId: n.id, nodeName: `Node ${n.id}`}));
-        a.forEach((d: any) => aAll.push({...d, nodeId: n.id, nodeName: `Node ${n.id}`}));
+        v.forEach((d: any) => vAll.push({...d, nodeId: n.id, nodeName: n.is_virtual ? `虚拟 Node（外部流）` : `Node ${n.id}`}));
+        a.forEach((d: any) => aAll.push({...d, nodeId: n.id, nodeName: n.is_virtual ? `虚拟 Node（外部流）` : `Node ${n.id}`}));
       }));
       setAllVideos(vAll); setAllAudios(aAll);
     } catch (e) { setError(e instanceof Error ? e.message : '加载失败'); }
@@ -47,24 +47,27 @@ export default function DeviceInfo() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const handleSave = () => {
-    if (!selectedVideo || !selectedAudio) return;
-    const name = viewName.trim() || `视图-${selectedVideo.name}/${selectedAudio.name}`;
-    const cam: CameraView = {
-      id: `cam-${Date.now()}`,
-      name,
-      status: 'online',
-      videoDevice: selectedVideo.name,
-      audioDevice: selectedAudio.name,
-    };
-    addCamera(cam);
-    setShowPanel(false);
-    setViewName('');
-    setSelectedVideo(null);
-    setSelectedAudio(null);
+  const handleSave = async () => {
+    if (!selectedVideo) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      await client.createView({
+        video_id: selectedVideo.id,
+        audio_id: selectedAudio ? selectedAudio.id : null,
+      });
+      setShowPanel(false);
+      setViewName('');
+      setSelectedVideo(null);
+      setSelectedAudio(null);
+    } catch (e: any) {
+      setSaveError(e?.detail || e?.message || '创建视图失败');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleSelect = (item: {name:string;nodeId:number}) => {
+  const handleSelect = (item: {id:number;name:string;nodeId:number}) => {
     if (pickerMode === 'video') setSelectedVideo(item);
     else if (pickerMode === 'audio') setSelectedAudio(item);
     setPickerMode(null);
@@ -96,7 +99,7 @@ export default function DeviceInfo() {
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 'var(--space-4)' }}>
-            {nodes.map(node => <DeviceNodeCard key={node.id} node={node} />)}
+            {nodes.map(node => <DeviceNodeCard key={node.id} node={node} isVirtual={node.is_virtual} />)}
             {nodes.length === 0 && (
               <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-disabled)', padding: 'var(--space-8)' }}>
                 暂无节点数据
@@ -107,7 +110,7 @@ export default function DeviceInfo() {
       </Card>
 
       {/* Add view panel */}
-      <Panel open={showPanel} onClose={() => { setShowPanel(false); setSelectedVideo(null); setSelectedAudio(null); setViewName(''); }} title="增添监控视图" width={420}>
+      <Panel open={showPanel} onClose={() => { setShowPanel(false); setSelectedVideo(null); setSelectedAudio(null); setViewName(''); setSaveError(''); }} title="增添监控视图" width={420}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
           {/* View name */}
           <div>
@@ -130,13 +133,13 @@ export default function DeviceInfo() {
               {selectedVideo || selectedAudio ? (
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--font-semibold)', color: 'var(--text-primary)' }}>
-                    {selectedVideo ? selectedVideo.name : '—'} / {selectedAudio ? selectedAudio.name : '—'}
+                    {selectedVideo ? selectedVideo.name : '—'} / {selectedAudio ? selectedAudio.name : '无音频'}
                   </div>
                 </div>
               ) : (
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: 'var(--text-lg)', color: 'var(--text-disabled)' }}>未选择设备</div>
-                  <div style={{ fontSize: 'var(--text-sm)', marginTop: 'var(--space-1)' }}>请选择 Video 和 Audio 设备</div>
+                  <div style={{ fontSize: 'var(--text-sm)', marginTop: 'var(--space-1)' }}>请选择 Video 设备（Audio 可选）</div>
                 </div>
               )}
             </div>
@@ -154,7 +157,7 @@ export default function DeviceInfo() {
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--text-sm)' }}>
                 <Mic size={14} style={{ color: selectedAudio ? 'var(--color-success)' : 'var(--text-disabled)' }} />
                 <span style={{ color: selectedAudio ? 'var(--text-primary)' : 'var(--text-disabled)' }}>
-                  {selectedAudio ? selectedAudio.name : '未选 Audio'}
+                  {selectedAudio ? selectedAudio.name : '无音频'}
                 </span>
               </div>
             </div>
@@ -168,15 +171,22 @@ export default function DeviceInfo() {
             </Button>
             <Button variant="secondary" icon={Mic} style={{ width: '100%' }}
               onClick={() => setPickerMode('audio')}>
-              {selectedAudio ? `Audio: ${selectedAudio.name}` : '选择 Audio'}
+              {selectedAudio ? `Audio: ${selectedAudio.name}` : '选择 Audio（可选）'}
             </Button>
           </div>
 
+          {/* Save error */}
+          {saveError && (
+            <div style={{ color: 'var(--color-danger)', fontSize: 'var(--text-sm)', padding: 'var(--space-2)' }}>
+              {saveError}
+            </div>
+          )}
+
           {/* Save */}
           <Button variant="primary" size="lg" style={{ width: '100%' }}
-            disabled={!selectedVideo || !selectedAudio}
+            disabled={!selectedVideo || saving}
             onClick={handleSave}>
-            保存
+            {saving ? '创建中...' : '保存'}
           </Button>
         </div>
       </Panel>
@@ -195,21 +205,44 @@ export default function DeviceInfo() {
               <X size={20} style={{ cursor: 'pointer', color: 'var(--text-secondary)' }} onClick={() => setPickerMode(null)} />
             </div>
             <div style={{ overflowY: 'auto', flex: 1 }}>
+              {/* No Audio option for audio picker */}
+              {pickerMode === 'audio' && (
+                <Card hoverable onClick={() => { setSelectedAudio(null); setPickerMode(null); }}
+                  style={{ marginBottom: 'var(--space-2)', padding: 'var(--space-3) var(--space-4)',
+                    display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
+                    border: !selectedAudio ? '1px solid var(--color-success)' : undefined }}>
+                  <StatusDot status="online" size="sm" />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-medium)', color: 'var(--text-primary)' }}>
+                      无音频（纯视频）
+                    </div>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
+                      不启用音频检测和 YAMNet 声音分类
+                    </div>
+                  </div>
+                  {!selectedAudio ? (
+                    <div style={{ color: 'var(--color-success)', fontWeight: 'var(--font-medium)', fontSize: 'var(--text-sm)' }}>已选</div>
+                  ) : (
+                    <div style={{ color: 'var(--color-info)', fontSize: 'var(--text-sm)' }}>选择</div>
+                  )}
+                </Card>
+              )}
               {(pickerMode==='video'?allVideos:allAudios).map((d,i) => (
                 <Card key={`${d.nodeId}-${d.name}-${i}`} hoverable onClick={() => handleSelect(d)}
                   style={{ marginBottom: 'var(--space-2)', padding: 'var(--space-3) var(--space-4)',
                     display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                  <StatusDot status={d.status} size="sm" />
+                  <StatusDot status={d.streaming ? 'online' : 'offline'} size="sm" />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-medium)', color: 'var(--text-primary)' }}>
                       {d.name}
                     </div>
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
-                      {d.nodeName} · {d.status==='online'?'在线':d.status==='alert'?'告警':'离线'}
+                      {d.nodeName} · {d.streaming ? '推流中' : '离线'}
+                      {'streamUrl' in d && d.streamUrl ? ' · 外部流' : ''}
                     </div>
                   </div>
-                  {(pickerMode==='video' && selectedVideo?.name===d.name) ||
-                   (pickerMode==='audio' && selectedAudio?.name===d.name) ? (
+                  {(pickerMode==='video' && selectedVideo?.id===d.id) ||
+                   (pickerMode==='audio' && selectedAudio?.id===d.id) ? (
                     <div style={{ color: 'var(--color-success)', fontWeight: 'var(--font-medium)', fontSize: 'var(--text-sm)' }}>已选</div>
                   ) : (
                     <div style={{ color: 'var(--color-info)', fontSize: 'var(--text-sm)' }}>选择</div>
@@ -227,9 +260,9 @@ export default function DeviceInfo() {
   );
 }
 
-function DeviceNodeCard({ node }: { node: NodeResponse }) {
+function DeviceNodeCard({ node, isVirtual }: { node: NodeResponse; isVirtual: boolean }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [videos, setVideos] = useState<{id:number;name:string;streaming:boolean}[]>([]);
+  const [videos, setVideos] = useState<{id:number;name:string;streaming:boolean;stream_url:string|null}[]>([]);
   const [audios, setAudios] = useState<{id:number;name:string;streaming:boolean}[]>([]);
   const [devLoading, setDevLoading] = useState(false);
 
@@ -243,12 +276,15 @@ function DeviceNodeCard({ node }: { node: NodeResponse }) {
     }
   }, [collapsed, node.id]);
 
-  const isAbnormal = !node.is_connected;
+  const isAbnormal = !isVirtual && !node.is_connected;
+  const statusLabel = isVirtual ? '虚拟节点（外部流）' : node.is_connected ? '在线' : '离线';
+  const statusColor = isVirtual ? 'var(--color-info)' : node.is_connected ? 'var(--color-success)' : 'var(--color-danger)';
+
   return (
     <div style={{
-      background: isAbnormal ? 'var(--color-danger-dim)' : 'var(--bg-canvas)',
+      background: isVirtual ? 'var(--color-info-dim)' : isAbnormal ? 'var(--color-danger-dim)' : 'var(--bg-canvas)',
       borderRadius: 'var(--radius-md)',
-      border: `1px solid ${isAbnormal ? 'rgba(240,71,71,.3)' : 'rgba(255,255,255,.06)'}`,
+      border: `1px solid ${isVirtual ? 'rgba(77,171,247,.3)' : isAbnormal ? 'rgba(240,71,71,.3)' : 'rgba(255,255,255,.06)'}`,
       overflow: 'hidden',
     }}>
       <div onClick={() => setCollapsed(c => !c)} style={{
@@ -256,13 +292,13 @@ function DeviceNodeCard({ node }: { node: NodeResponse }) {
         padding: 'var(--space-4)', cursor: 'pointer', fontSize: 'var(--text-xl)',
         fontWeight: 'var(--font-semibold)', color: 'var(--text-primary)' }}>
         {collapsed ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
-        <span>Node {node.id}</span>
-        <StatusDot status={node.is_connected ? 'online' : 'offline'} pulse={isAbnormal} size="sm" />
+        <span>{isVirtual ? `虚拟 Node（外部流）` : `Node ${node.id}`}</span>
+        <StatusDot status={isVirtual ? 'online' : isAbnormal ? 'offline' : 'online'} pulse={isAbnormal && !isVirtual} size="sm" />
       </div>
       {!collapsed && (
         <div style={{ padding: 'var(--space-4)' }}>
           <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 'var(--space-3)' }}>
-            <div>状态：<span style={{ color: node.is_connected ? 'var(--color-success)' : 'var(--color-danger)' }}>{node.is_connected ? '在线' : '离线'}</span></div>
+            <div>状态：<span style={{ color: statusColor }}>{statusLabel}</span></div>
             <div style={{marginTop:2}}>最后上线：<span style={{ color: 'var(--text-primary)' }}>{node.last_seen || '未知'}</span></div>
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
@@ -275,7 +311,10 @@ function DeviceNodeCard({ node }: { node: NodeResponse }) {
                 videos.map(d => (
                   <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: 'var(--space-2) var(--space-3)', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)', marginBottom: 4 }}>
-                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>{d.name}</span>
+                    <div>
+                      <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>{d.name}</span>
+                      {d.stream_url && <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-info)', marginLeft: 6 }}>外部流</span>}
+                    </div>
                     <StatusDot status={d.streaming ? 'online' : 'offline'} size="sm" />
                   </div>
                 ))}
