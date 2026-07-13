@@ -105,6 +105,20 @@ npm run build
 
 输出到 `dist/`。
 
+
+---
+
+## API 路径规则
+
+前端所有 REST 调用统一写在 `src/api/client.ts`。生产 Server 经 nginx 暴露在 `:8081` 时，FastAPI 的 307 尾斜杠重定向可能生成不带 `:8081` 的 Location，浏览器会表现为 CORS 或 `Failed to fetch`。因此 API 路径必须和后端路由完全一致：
+
+- 设备列表使用 `/nodes/`，不要写 `/nodes`。
+- 创建/列表 View 使用 `/views/`。
+- 查询单个 View 使用 `/views/{id}`。
+- 删除单个 View 使用 `/views/{id}`，不要写 `/views/{id}/`。
+
+如果浏览器控制台出现从 `http://10.126.59.25:8081/...` 重定向到 `http://10.126.59.25/...` 的请求，优先检查 `client.ts` 对应路径的尾斜杠。
+
 ---
 
 ## 依赖
