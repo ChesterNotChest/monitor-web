@@ -4,19 +4,19 @@ import { LayoutDashboard, ScrollText, Users, UserSquare, Monitor, AlertTriangle,
 import { useAlerts } from '../../context/AlertContext';
 import { useAuth } from '../../context/AuthContext';
 
-interface NavItem { path: string; label: string; icon: typeof LayoutDashboard; badge?: number; }
+interface NavItem { path: string; label: string; icon: typeof LayoutDashboard; roles: string[]; badge?: number; }
 
 const baseItems: NavItem[] = [
-  { path:'/main',label:'主面板',icon:LayoutDashboard },
-  { path:'/log',label:'日志',icon:ScrollText },
-  { path:`/report/${new Date().toISOString().slice(0, 10)}`,label:'监控日报',icon:FileText },
-  { path:'/users',label:'用户管理',icon:Users },
-  { path:'/characters',label:'人物管理',icon:UserSquare },
-  { path:'/equipment',label:'设备信息',icon:Monitor },
-  { path:'/streams',label:'自定义流',icon:Radio },
-  { path:'/exception-settings',label:'异常设置',icon:AlertTriangle },
-  { path:'/detection-settings',label:'检测类型',icon:Tag },
-  { path:'/event-stats',label:'事件统计',icon:BarChart3 },
+  { path:'/main',label:'主面板',icon:LayoutDashboard,roles:['security_guard','manager','operator'] },
+  { path:'/log',label:'日志',icon:ScrollText,roles:['manager','operator'] },
+  { path:`/report/${new Date().toISOString().slice(0, 10)}`,label:'监控日报',icon:FileText,roles:['manager','operator'] },
+  { path:'/users',label:'用户管理',icon:Users,roles:['manager','operator'] },
+  { path:'/characters',label:'人物管理',icon:UserSquare,roles:['security_guard','manager','operator'] },
+  { path:'/equipment',label:'设备信息',icon:Monitor,roles:['operator'] },
+  { path:'/streams',label:'自定义流',icon:Radio,roles:['operator'] },
+  { path:'/exception-settings',label:'异常设置',icon:AlertTriangle,roles:['manager','operator'] },
+  { path:'/detection-settings',label:'检测类型',icon:Tag,roles:['manager','operator'] },
+  { path:'/event-stats',label:'事件统计',icon:BarChart3,roles:['manager','operator'] },
 ];
 
 export function Sidebar() {
@@ -59,7 +59,10 @@ export function Sidebar() {
     setTimeout(()=>{setShowChangePwd(false);setOldPwd('');setNewPwd('');setConfirmPwd('');setPwdSuccess('');},800);
   };
 
-  const navItems = baseItems.map(item => ({
+  const role = user?.role || 'operator';
+  const navItems = baseItems
+    .filter(item => item.roles.includes(role))
+    .map(item => ({
     ...item,
     badge: item.path==='/main' ? pendingCount : undefined,
   }));
