@@ -323,7 +323,7 @@ function MiniViewCard({ view, renamingId, renameText, startRename, finishRename,
   removeCamera: (id: string) => void; fetchData: () => void; onClick: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const webrtcUrl = (view as any).webrtc_url || `http://127.0.0.1:1985/rtc/v1/whep/?app=live&stream=${view.id}`;
+  const webrtcUrl = (view as any).webrtc_url || `http://127.0.0.1:1985/rtc/v1/whep/?app=view&stream=${view.id}`;
   const { status } = useWhepPlayer(videoRef, webrtcUrl);
 
   return (
