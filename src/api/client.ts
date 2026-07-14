@@ -556,6 +556,16 @@ export async function updateUserRole(id: number, role: string): Promise<UserResp
   return baseFetch<UserResponse>(`/users/${id}/role/${qs({ role })}`, { method: 'PUT' });
 }
 
+export async function updateUser(
+  id: number, role?: string, dingtalk_mobile?: string, supervisor_id?: number,
+): Promise<UserResponse> {
+  const params: Record<string, string | number> = {};
+  if (role) params.role = role;
+  if (dingtalk_mobile !== undefined) params.dingtalk_mobile = dingtalk_mobile;
+  if (supervisor_id !== undefined) params.supervisor_id = supervisor_id;
+  return baseFetch<UserResponse>(`/users/${id}/${qs(params)}`, { method: 'PUT' });
+}
+
 export async function deactivateUser(id: number): Promise<void> {
   await baseFetch<void>(`/users/${id}/deactivate/`, { method: 'PUT' });
 }
