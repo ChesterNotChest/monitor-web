@@ -10,7 +10,6 @@ import { useAlerts } from '../context/AlertContext';
 import { useCameras } from '../context/CameraContext';
 import * as client from '../api/client';
 import type { DashboardStats, ViewResponse, DashboardTrends } from '../api/types';
-import { SeverityLabel, SeverityBadgeLevel } from '../api/enums';
 
 export default function MainDashboard() {
   const navigate = useNavigate();
@@ -30,7 +29,7 @@ export default function MainDashboard() {
 
   // Create view flow
   const [showCreate, setShowCreate] = useState(false);
-  const [devices, setDevices] = useState<{videos: {id:number;name:string;nodeId:number;streaming:boolean}[], audios: {id:number;name:string;nodeId:number;streaming:boolean}[]}>({videos:[],audios:[]});
+  const [devices, setDevices] = useState<{videos: {id:number;name:string;node_id:number;streaming:boolean}[], audios: {id:number;name:string;node_id:number;streaming:boolean}[]}>({videos:[],audios:[]});
   const [createStep, setCreateStep] = useState<'select' | 'creating'>('select');
   const [selVideo, setSelVideo] = useState<number | null>(null);
   const [selAudio, setSelAudio] = useState<number | null>(null);
@@ -303,22 +302,32 @@ function TrendChart({ points }: { points: { date: string; severity: string; coun
           })}
           {/* Baseline */}
           <line x1={0} y1={chartH} x2={totalWidth} y2={chartH} stroke="rgba(255,255,255,.1)" strokeWidth={1} />
-          {/* Date labels (every ~7th) */}
-          {points.map((p, i) => {
-            if (i % Math.max(Math.floor(points.length / 6), 1) !== 0) return null;
-            return (
+          {/* Date labels — 去重，最多 7 个 */}
+          {(() => {
+            const seen = new Set<string>();
+            const labels: { date: string; x: number }[] = [];
+            points.forEach((p, i) => {
+              const short = p.date.slice(5);
+              if (!seen.has(short)) {
+                seen.add(short);
+                labels.push({ date: short, x: i * (barWidth + gap) + barWidth / 2 });
+              }
+            });
+            // 太多标签时稀疏采样
+            const step = labels.length <= 7 ? 1 : Math.ceil(labels.length / 7);
+            return labels.filter((_, i) => i % step === 0).map((l, i) => (
               <text
                 key={`lbl-${i}`}
-                x={i * (barWidth + gap) + barWidth / 2}
+                x={l.x}
                 y={chartH + 16}
                 textAnchor="middle"
                 fill="var(--text-disabled)"
                 fontSize={10}
               >
-                {p.date.slice(5)}
+                {l.date}
               </text>
-            );
-          })}
+              ));
+            })()}
         </svg>
       </div>
     </div>

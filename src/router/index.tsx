@@ -24,7 +24,7 @@ function PageFallback() {
   return <div style={{ padding: 'var(--space-6)' }}><Skeleton variant="card" count={3} /></div>;
 }
 
-function LazyPage({ Component }: { Component: React.LazyExoticComponent<() => JSX.Element> }) {
+function LazyPage({ Component }: { Component: React.LazyExoticComponent<() => React.ReactNode> }) {
   return <Suspense fallback={<PageFallback />}><Component /></Suspense>;
 }
 

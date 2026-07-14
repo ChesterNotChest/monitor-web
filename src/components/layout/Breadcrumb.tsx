@@ -1,4 +1,4 @@
-import { useLocation, useNavigate, matchPath } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const labelMap: Record<string,string> = {
   main:'主面板',view:'实时监控',edit:'电子围栏',replay:'事件回放',

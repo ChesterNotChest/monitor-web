@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Monitor, Activity, Search, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Monitor, Activity, AlertTriangle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Skeleton } from '../components/ui/Skeleton';
 import * as client from '../api/client';

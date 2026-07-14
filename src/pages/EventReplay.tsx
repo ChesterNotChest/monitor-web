@@ -9,7 +9,7 @@ import * as client from '../api/client';
 import type { EventResponse, RecordingResponse } from '../api/types';
 import flvjs from 'flv.js';
 
-type ReviewStatus = 'pending' | 'handled' | 'false_alarm';
+type ReviewStatus = 'pending' | 'handled' | 'false_alarm' | 'acknowledged';
 
 /**
  * EventReplay — 事件回放页面。

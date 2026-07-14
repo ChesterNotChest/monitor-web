@@ -44,7 +44,7 @@ export const seedPersons: PersonResponse[] = [
 // ── Nodes ─────────────────────────────────────
 
 export const seedNodes: NodeResponse[] = [
-  { id: 1, is_connected: true, last_seen: '2026-07-09T16:00:00Z' },
+  { id: 1, is_connected: true, is_virtual: false, last_seen: '2026-07-09T16:00:00Z' },
 ];
 
 // ── Views ─────────────────────────────────────
@@ -52,6 +52,7 @@ export const seedNodes: NodeResponse[] = [
 export const seedViews: ViewResponse[] = [
   {
     id: 1,
+    name: null,
     audio_id: 1,
     video_id: 1,
     cache_path: null,
@@ -63,6 +64,7 @@ export const seedViews: ViewResponse[] = [
   },
   {
     id: 2,
+    name: null,
     audio_id: 2,
     video_id: 2,
     cache_path: null,

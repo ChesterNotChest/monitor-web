@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { Camera, AlertTriangle, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { Camera, AlertTriangle, RefreshCw, WifiOff } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -22,7 +22,6 @@ export default function LiveMonitor() {
 
   const viewId = cameraId ? Number(cameraId) : null;
   const viewAlerts = alerts.filter(a => a.view_id === viewId);
-  const from = (location.state as any)?.from || '/main';
 
   // Fetch view
   useEffect(() => {

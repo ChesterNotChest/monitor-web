@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Camera, Plus, Trash2, AlertTriangle, Crosshair, X } from 'lucide-react';
+import { Camera, Trash2, Crosshair, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useWhepPlayer } from '../hooks/useWhepPlayer';
 import * as client from '../api/client';
-import type { FenceResponse, FenceCreate, ViewResponse } from '../api/types';
+import type { FenceResponse, ViewResponse } from '../api/types';
 
 type Point = [number, number];
 
@@ -18,7 +18,6 @@ export default function FenceEditor() {
 
   const [view, setView] = useState<ViewResponse | null>(null);
   const [fences, setFences] = useState<FenceResponse[]>([]);
-  const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
   const [error, setError] = useState('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -37,7 +36,7 @@ export default function FenceEditor() {
   const [addForm, setAddForm] = useState({ name: '', entry_delay_seconds: 0, safe_distance: 0, leave_frames: 5 });
 
   const fetchData = useCallback(async () => {
-    setLoading(true); setError('');
+    setError('');
     try {
       const [v, f] = await Promise.all([
         client.fetchViewById(id).catch(() => null),
@@ -47,7 +46,7 @@ export default function FenceEditor() {
       setFences(f.filter(fc => fc.view_id === id));
     } catch (e) {
       setError(e instanceof Error ? e.message : '加载失败');
-    } finally { setLoading(false); setInitialLoad(false); }
+    } finally { setInitialLoad(false); }
   }, [id]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -220,7 +219,7 @@ export default function FenceEditor() {
                   {f.coords.length}点 · 延迟{f.entry_delay_seconds}s · 安全距离{f.safe_distance}px
                 </div>
               </div>
-              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); doDelete(f.id); }} disabled={actionLoading}>
+              <Button variant="ghost" size="sm" onClick={() => doDelete(f.id)} disabled={actionLoading}>
                 <Trash2 size={16} />
               </Button>
             </Card>

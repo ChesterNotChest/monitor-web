@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, TrendingUp } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
 import { Skeleton } from '../components/ui/Skeleton';
 import * as client from '../api/client';
 import type { ExceptionStatsItem, TrendItem } from '../api/types';

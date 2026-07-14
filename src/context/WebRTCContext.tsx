@@ -57,7 +57,6 @@ export function WebRTCProvider({ children }: { children: React.ReactNode }) {
     pc.addTransceiver('audio', { direction: 'recvonly' });
 
     // ── 详细 ICE 状态追踪 ──
-    let iceResolved = false;
     pc.oniceconnectionstatechange = () => {
       console.log('[WRTC-Pool] ICE state: %s (t=%dms) url=%s',
         pc.iceConnectionState, Date.now() - tStart, url);
