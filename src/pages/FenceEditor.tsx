@@ -51,22 +51,40 @@ export default function FenceEditor() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // 将 canvas 容器坐标换算为原始视频帧坐标（处理 object-fit:contain 的黑边+缩放）
+  const toFrameCoords = useCallback((canvasX: number, canvasY: number): Point => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return [Math.round(canvasX), Math.round(canvasY)];
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    if (!vw || !vh) return [Math.round(canvasX), Math.round(canvasY)];
+    const cw = canvas.clientWidth;
+    const ch = canvas.clientHeight;
+    const scale = Math.min(cw / vw, ch / vh);
+    const dispW = vw * scale;
+    const dispH = vh * scale;
+    const offsetX = (cw - dispW) / 2;
+    const offsetY = (ch - dispH) / 2;
+    return [Math.round((canvasX - offsetX) / scale), Math.round((canvasY - offsetY) / scale)];
+  }, []);
+
   // Canvas click → add draw point
   const onCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!drawing) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const newPoints: Point[] = [...drawPoints, [Math.round(x), Math.round(y)]];
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    const [x, y] = toFrameCoords(cx, cy);
+    const newPoints: Point[] = [...drawPoints, [x, y]];
     if (newPoints.length >= 4) {
-      // Auto-finish: open save dialog with points
       setDrawing(false);
       setShowAdd(true);
     }
     setDrawPoints(newPoints);
-  }, [drawing, drawPoints]);
+  }, [drawing, drawPoints, toFrameCoords]);
 
   // Cancel drawing
   const cancelDrawing = () => { setDrawing(false); setDrawPoints([]); };
