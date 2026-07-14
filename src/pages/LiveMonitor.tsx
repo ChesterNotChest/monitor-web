@@ -114,7 +114,10 @@ export default function LiveMonitor() {
               padding: 'var(--space-3)', borderRadius: 'var(--radius-sm)', background: 'var(--bg-canvas)',
               borderLeft: '3px solid var(--color-warning)' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-medium)' }}>告警 #{a.id}</div>
+                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-medium)' }}>
+                  {a.exception_name || `告警 #${a.id}`}
+                  {a.exception_name && <span style={{ color: 'var(--text-disabled)', fontWeight: 'var(--font-normal)', marginLeft: 4 }}>#{a.id}</span>}
+                </div>
                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: 2 }}>{a.timestamp}</div>
               </div>
               <Badge level="warning">中危</Badge>
