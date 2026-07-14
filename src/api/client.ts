@@ -35,7 +35,10 @@ import type {
   RecordingResponse,
   DailyReportResponse,
   DeepSeekDailyReportRequest,
+  PersistedDailyReportResponse,
   ReportResponse,
+  ReportSettingsRequest,
+  ReportSettingsResponse,
   TrendItem,
   UserResponse,
   VideoDeviceResponse,
@@ -422,6 +425,25 @@ export async function fetchDailyReport(date?: string): Promise<DailyReportRespon
 export async function generateDeepSeekDailyReport(body: DeepSeekDailyReportRequest): Promise<DailyReportResponse> {
   return baseFetch<DailyReportResponse>('/reports/daily/deepseek/', {
     method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function fetchPersistedDailyReport(date?: string): Promise<PersistedDailyReportResponse> {
+  return baseFetch<PersistedDailyReportResponse>(`/reports/daily/persisted/${qs({ date: date || undefined })}`);
+}
+
+export async function generateDailyReportNow(): Promise<PersistedDailyReportResponse> {
+  return baseFetch<PersistedDailyReportResponse>('/reports/daily/generate-now/', { method: 'POST' });
+}
+
+export async function fetchReportSettings(): Promise<ReportSettingsResponse> {
+  return baseFetch<ReportSettingsResponse>('/reports/settings/');
+}
+
+export async function updateReportSettings(body: ReportSettingsRequest): Promise<ReportSettingsResponse> {
+  return baseFetch<ReportSettingsResponse>('/reports/settings/', {
+    method: 'PUT',
     body: JSON.stringify(body),
   });
 }

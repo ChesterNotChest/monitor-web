@@ -34,7 +34,7 @@ export default function FenceEditor() {
 
   // Add fence form
   const [showAdd, setShowAdd] = useState(false);
-  const [addForm, setAddForm] = useState({ name: '', dwell_time: 10, density: 0.6, leave_frames: 5 });
+  const [addForm, setAddForm] = useState({ name: '', entry_delay_seconds: 0, safe_distance: 0, leave_frames: 5 });
 
   const fetchData = useCallback(async () => {
     setLoading(true); setError('');
@@ -123,15 +123,15 @@ export default function FenceEditor() {
         name: addForm.name,
         view_id: id,
         coords: drawPoints.slice(0, 4),
-        dwell_time: addForm.dwell_time,
-        density: addForm.density,
+        safe_distance: addForm.safe_distance,
+        entry_delay_seconds: addForm.entry_delay_seconds,
         leave_frames: addForm.leave_frames,
       };
       console.log('[FenceEditor] createFence', body);
       const saved = await client.createFence(body);
       setShowAdd(false);
       setDrawPoints([]);
-      setAddForm({ name: '', dwell_time: 10, density: 0.6, leave_frames: 5 });
+      setAddForm({ name: '', entry_delay_seconds: 0, safe_distance: 0, leave_frames: 5 });
       // Optimistic: add the saved fence to local list immediately
       setFences(prev => [...prev, saved]);
     } catch (e) {
@@ -217,7 +217,7 @@ export default function FenceEditor() {
               <div>
                 <div style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-medium)', color: 'var(--text-primary)' }}>{f.name}</div>
                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: 2 }}>
-                  {f.coords.length}点 · 停留{f.dwell_time}s · 密度{f.density}
+                  {f.coords.length}点 · 延迟{f.entry_delay_seconds}s · 安全距离{f.safe_distance}px
                 </div>
               </div>
               <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); doDelete(f.id); }} disabled={actionLoading}>
@@ -241,12 +241,12 @@ export default function FenceEditor() {
           <input style={inputStyle} placeholder="围栏名称" value={addForm.name}
             onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} autoFocus />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
-            <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>停留时限(s)</label>
-              <input style={inputStyle} type="number" value={addForm.dwell_time}
-                onChange={e => setAddForm(f => ({ ...f, dwell_time: Number(e.target.value) }))} /></div>
-            <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>密度阈值</label>
-              <input style={inputStyle} type="number" step="0.1" min="0" max="1" value={addForm.density}
-                onChange={e => setAddForm(f => ({ ...f, density: Number(e.target.value) }))} /></div>
+            <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>进入延迟(秒)</label>
+              <input style={inputStyle} type="number" min="0" value={addForm.entry_delay_seconds}
+                onChange={e => setAddForm(f => ({ ...f, entry_delay_seconds: Number(e.target.value) }))} /></div>
+            <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>安全距离(像素)</label>
+              <input style={inputStyle} type="number" min="0" value={addForm.safe_distance}
+                onChange={e => setAddForm(f => ({ ...f, safe_distance: Number(e.target.value) }))} /></div>
           </div>
           <div style={{ marginBottom: 'var(--space-3)' }}><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>离开判定帧数</label>
             <input style={inputStyle} type="number" value={addForm.leave_frames}

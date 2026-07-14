@@ -203,8 +203,8 @@ export interface FenceCreate {
   name: string;
   view_id: number;
   coords: number[][];
-  dwell_time?: number;
-  density?: number;
+  safe_distance?: number;
+  entry_delay_seconds?: number;
   leave_frames?: number;
 }
 
@@ -213,8 +213,8 @@ export interface FenceResponse {
   name: string;
   view_id: number;
   coords: number[][];
-  dwell_time: number;
-  density: number;
+  safe_distance: number;
+  entry_delay_seconds: number;
   leave_frames: number;
 }
 
@@ -278,6 +278,58 @@ export interface DeepSeekDailyReportRequest {
   date?: string | null;
   api_key: string;
   model?: string;
+}
+
+// ── Persisted daily report (new API) ──
+
+export interface DailyStats {
+  period: string;
+  date: string;
+  time_range_start: string;
+  time_range_end: string;
+  total_alerts: number;
+  risk_level: string;
+  by_severity: ReportItem[];
+  top_exceptions: ReportItem[];
+  hourly_trend: DailyTrendPoint[];
+  by_view: ReportItem[];
+  entity_types: ReportItem[];
+}
+
+export interface DailyInsights {
+  partial: boolean;
+  summary: string;
+  key_findings: string[];
+  pattern_analysis?: Record<string, unknown> | null;
+  trend_forecast?: Record<string, unknown> | null;
+  risk_distribution?: { label: string; value: number; severity: string }[];
+  recommendations: string[];
+  generated_at?: string | null;
+}
+
+export interface PersistedDailyReportResponse {
+  report_date: string;
+  stats: DailyStats;
+  insights?: DailyInsights | null;
+  ai_provider?: string | null;
+  ai_model?: string | null;
+  regenerated_count: number;
+  generated_at?: string | null;
+  next_scheduled_at?: string | null;
+  generated_now?: boolean;
+}
+
+export interface ReportSettingsResponse {
+  has_key: boolean;
+  key_preview?: string | null;
+  model: string;
+  source?: string | null;
+  next_scheduled_at?: string | null;
+}
+
+export interface ReportSettingsRequest {
+  api_key?: string | null;
+  model?: string | null;
 }
 
 // ══════════════════════════════════════════════

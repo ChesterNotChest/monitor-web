@@ -165,18 +165,26 @@ export default function MainDashboard() {
         <div style={{width:360,flexShrink:0,background:'var(--bg-surface)',borderRadius:'var(--radius-md)',
           padding:'var(--space-4)',border:'1px solid rgba(255,255,255,.06)',overflowY:'auto',display:'flex',flexDirection:'column',gap:'var(--space-3)'}}>
           <div style={{fontSize:'var(--text-lg)',fontWeight:'var(--font-semibold)',paddingBottom:'var(--space-2)',borderBottom:'1px solid rgba(255,255,255,.06)'}}>实时告警列表</div>
-          {pendingAlerts.map(a=>(
+          {pendingAlerts.map(a=>{
+            const sev = (a.severity || 'WARNING').toUpperCase();
+            const badgeLevel = sev === 'EMERGENCY' || sev === 'CRITICAL' ? 'danger' : sev === 'WARNING' ? 'warning' : 'neutral';
+            const sevLabel = sev === 'EMERGENCY' ? '紧急' : sev === 'CRITICAL' ? '严重' : sev === 'WARNING' ? '中危' : '低危';
+            const borderColor = sev === 'EMERGENCY' || sev === 'CRITICAL' ? 'var(--color-danger)' : sev === 'WARNING' ? 'var(--color-warning)' : 'var(--text-disabled)';
+            const meta = [a.timestamp, `视图 ${a.view_id}`];
+            if (a.track_id) meta.unshift(`Track #${a.track_id}`);
+            return (
             <div key={a.id} style={{display:'flex',alignItems:'center',gap:'var(--space-3)',
               padding:'var(--space-3)',borderRadius:'var(--radius-sm)',background:'var(--bg-canvas)',
-              borderLeft:'3px solid var(--color-danger)'}}>
+              borderLeft:`3px solid ${borderColor}`}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:'var(--text-sm)',fontWeight:'var(--font-medium)',color:'var(--text-primary)'}}>{a.exception_name || `告警 #${a.id}`}</div>
-                <div style={{fontSize:'var(--text-xs)',color:'var(--text-secondary)',marginTop:2}}>Track #{a.track_id} · {a.timestamp} · 视图 {a.view_id}</div>
+                <div style={{fontSize:'var(--text-xs)',color:'var(--text-secondary)',marginTop:2}}>{meta.join(' · ')}</div>
               </div>
-              <Badge level="danger">待处理</Badge>
+              <Badge level={badgeLevel}>{sevLabel}</Badge>
               <Button variant="ghost" size="sm" onClick={()=>goTo(`/view/${a.view_id}`,{from:'/main'})}>进入视图</Button>
             </div>
-          ))}
+            );
+          })}
           {pendingAlerts.length===0&&<div style={{color:'var(--text-disabled)',textAlign:'center',padding:'var(--space-8)'}}>暂无未处理告警</div>}
         </div>
       </div>
@@ -323,7 +331,7 @@ function MiniViewCard({ view, renamingId, renameText, startRename, finishRename,
   removeCamera: (id: string) => void; fetchData: () => void; onClick: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const webrtcUrl = (view as any).webrtc_url || `http://127.0.0.1:1985/rtc/v1/whep/?app=live&stream=${view.id}`;
+  const webrtcUrl = (view as any).webrtc_url || `http://127.0.0.1:1985/rtc/v1/whep/?app=view&stream=${view.id}`;
   const { status } = useWhepPlayer(videoRef, webrtcUrl);
 
   return (

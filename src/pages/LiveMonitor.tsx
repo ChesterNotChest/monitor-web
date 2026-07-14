@@ -95,7 +95,7 @@ export default function LiveMonitor() {
             )}
           </div>
         ) : (
-          <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }} playsInline autoPlay />
+          <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }} playsInline autoPlay muted />
         )}
       </div>
 
@@ -109,18 +109,30 @@ export default function LiveMonitor() {
           {viewAlerts.length === 0 && (
             <div style={{ color: 'var(--text-disabled)', textAlign: 'center', padding: 'var(--space-8)' }}>当前视图无未处理告警</div>
           )}
-          {viewAlerts.map(a => (
+          {viewAlerts.map(a => {
+            const sev = (a.severity || 'WARNING').toUpperCase();
+            const badgeLevel = sev === 'EMERGENCY' || sev === 'CRITICAL' ? 'danger'
+                             : sev === 'WARNING' ? 'warning' : 'neutral';
+            const sevLabel = sev === 'EMERGENCY' ? '紧急' : sev === 'CRITICAL' ? '严重'
+                           : sev === 'WARNING' ? '中危' : '低危';
+            const borderColor = sev === 'EMERGENCY' || sev === 'CRITICAL' ? 'var(--color-danger)'
+                              : sev === 'WARNING' ? 'var(--color-warning)' : 'var(--text-disabled)';
+            return (
             <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
               padding: 'var(--space-3)', borderRadius: 'var(--radius-sm)', background: 'var(--bg-canvas)',
-              borderLeft: '3px solid var(--color-warning)' }}>
+              borderLeft: `3px solid ${borderColor}` }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-medium)' }}>告警 #{a.id}</div>
+                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-medium)' }}>
+                  {a.exception_name || `告警 #${a.id}`}
+                  {a.exception_name && <span style={{ color: 'var(--text-disabled)', fontWeight: 'var(--font-normal)', marginLeft: 4 }}>#{a.id}</span>}
+                </div>
                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: 2 }}>{a.timestamp}</div>
               </div>
-              <Badge level="warning">中危</Badge>
+              <Badge level={badgeLevel}>{sevLabel}</Badge>
               <Button variant="danger" size="sm" onClick={() => navigate(`/replay/${a.id}`, { state: { from: location.pathname } })}>查看回放</Button>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <div style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)', border: '1px solid rgba(255,255,255,.06)' }}>

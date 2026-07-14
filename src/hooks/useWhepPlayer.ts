@@ -6,10 +6,6 @@ interface WhepState {
   error: string;
 }
 
-/**
- * WebRTC WHEP 直播播放器 hook。
- * 使用 WebRTCContext 连接池 —— 挂载时 acquire(url)，卸载时 release(url)。
- */
 export function useWhepPlayer(
   videoRef: React.RefObject<HTMLVideoElement | null>,
   webrtcUrl: string | null | undefined,
@@ -30,8 +26,8 @@ export function useWhepPlayer(
       return;
     }
 
-    if (currentUrl.current === webrtcUrl) return; // 已在用
-    if (currentUrl.current) release(currentUrl.current); // 释放旧的
+    if (currentUrl.current === webrtcUrl) return;
+    if (currentUrl.current) release(currentUrl.current);
 
     currentUrl.current = webrtcUrl;
     console.log('[WHEP] acquiring:', webrtcUrl);
@@ -39,9 +35,8 @@ export function useWhepPlayer(
 
     acquire(webrtcUrl).then((result) => {
       if ('error' in result) {
-        const msg = result.error;
-        console.error('[WHEP] acquire failed:', msg);
-        setState({ status: 'error', error: msg });
+        console.error('[WHEP] acquire failed:', result.error);
+        setState({ status: 'error', error: result.error });
         currentUrl.current = null;
         return;
       }
