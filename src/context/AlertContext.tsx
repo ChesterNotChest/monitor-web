@@ -7,6 +7,8 @@ import { config } from '../api/config';
 interface AlertCtx {
   alerts: AlertResponse[];
   loading: boolean;
+  hasMore: boolean;
+  loadMore: () => void;
   refresh: () => void;
   markHandled: (id: number) => Promise<void>;
   markFalseAlarm: (id: number) => Promise<void>;
@@ -15,33 +17,55 @@ interface AlertCtx {
 const Ctx = createContext<AlertCtx>({
   alerts: [],
   loading: false,
+  hasMore: false,
+  loadMore: () => {},
   refresh: () => {},
   markHandled: () => Promise.resolve(),
   markFalseAlarm: () => Promise.resolve(),
 });
+
+const PAGE_SIZE = 10;
 
 const POLL_INTERVAL = 30_000;
 
 export function AlertProvider({ children }: { children: ReactNode }) {
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
+  const pageRef = useRef(1);
   const wsRef = useRef<WebSocket | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const data = await client.fetchAlerts(1, 50);
-      // 过滤已处理/误报 — 后端不过滤，前端兜底
-      setAlerts(data.items.filter(a =>
+      pageRef.current = 1;
+      const data = await client.fetchAlerts(1, PAGE_SIZE);
+      const filtered = data.items.filter(a =>
         a.status !== 'handled' && a.status !== 'false_alarm'
-      ));
+      );
+      setAlerts(filtered);
+      setHasMore(data.total > PAGE_SIZE);
     } catch {
       // Silently ignore
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (!hasMore) return;
+    try {
+      const nextPage = pageRef.current + 1;
+      const data = await client.fetchAlerts(nextPage, PAGE_SIZE);
+      const filtered = data.items.filter(a =>
+        a.status !== 'handled' && a.status !== 'false_alarm'
+      );
+      setAlerts(prev => [...prev, ...filtered]);
+      pageRef.current = nextPage;
+      setHasMore(data.items.length === PAGE_SIZE && alerts.length + filtered.length < data.total);
+    } catch { /* ignore */ }
+  }, [hasMore, alerts.length]);
 
   // WSS connection
   const connectWss = useCallback(() => {
@@ -110,7 +134,7 @@ export function AlertProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ alerts, loading, refresh, markHandled, markFalseAlarm }}>
+    <Ctx.Provider value={{ alerts, loading, hasMore, loadMore, refresh, markHandled, markFalseAlarm }}>
       {children}
     </Ctx.Provider>
   );

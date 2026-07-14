@@ -14,7 +14,7 @@ import { SeverityLabel, SeverityBadgeLevel } from '../api/enums';
 
 export default function MainDashboard() {
   const navigate = useNavigate();
-  const { alerts, refresh: refreshAlerts } = useAlerts();
+  const { alerts, hasMore, loadMore, refresh: refreshAlerts } = useAlerts();
   const { cameras: contextCameras, updateCamera, removeCamera } = useCameras();
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -144,7 +144,7 @@ export default function MainDashboard() {
               catch (e) { alert('触发失败: ' + (e instanceof Error ? e.message : String(e))); }
             }}>🔔 Debug 告警</Button>
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'var(--space-4)',overflowY:'auto',alignContent:'start',maxHeight:440}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'var(--space-4)',overflowY:'auto',alignContent:'start',flex:1}}>
             {loading ? (
               Array.from({length:2}).map((_,i)=>(
                 <Skeleton key={i} style={{height:160,borderRadius:'var(--radius-md)'}} />
@@ -163,7 +163,8 @@ export default function MainDashboard() {
         </div>
 
         <div style={{width:360,flexShrink:0,background:'var(--bg-surface)',borderRadius:'var(--radius-md)',
-          padding:'var(--space-4)',border:'1px solid rgba(255,255,255,.06)',overflowY:'auto',display:'flex',flexDirection:'column',gap:'var(--space-3)'}}>
+          padding:'var(--space-4)',border:'1px solid rgba(255,255,255,.06)',overflowY:'auto',display:'flex',flexDirection:'column',gap:'var(--space-3)'}}
+          onScroll={(e) => { const el = e.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight < 50 && hasMore) loadMore(); }}>
           <div style={{fontSize:'var(--text-lg)',fontWeight:'var(--font-semibold)',paddingBottom:'var(--space-2)',borderBottom:'1px solid rgba(255,255,255,.06)'}}>实时告警列表</div>
           {pendingAlerts.map(a=>{
             const sev = (a.severity || 'WARNING').toUpperCase();
@@ -185,6 +186,7 @@ export default function MainDashboard() {
             </div>
             );
           })}
+          {hasMore && <div style={{color:'var(--text-disabled)',textAlign:'center',padding:'var(--space-2)',cursor:'pointer'}} onClick={loadMore}>▼ 加载更多</div>}
           {pendingAlerts.length===0&&<div style={{color:'var(--text-disabled)',textAlign:'center',padding:'var(--space-8)'}}>暂无未处理告警</div>}
         </div>
       </div>

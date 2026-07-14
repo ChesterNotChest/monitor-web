@@ -14,7 +14,7 @@ export default function LiveMonitor() {
   const { cameraId } = useParams<{ cameraId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { alerts } = useAlerts();
+  const { alerts, hasMore, loadMore } = useAlerts();
 
   const [view, setView] = useState<ViewResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -102,7 +102,11 @@ export default function LiveMonitor() {
       {/* Right sidebar — alerts + actions */}
       <div style={{ width: 360, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
         <div style={{ flex: 1, background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)',
-          padding: 'var(--space-4)', border: '1px solid rgba(255,255,255,.06)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          padding: 'var(--space-4)', border: '1px solid rgba(255,255,255,.06)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            if (el.scrollHeight - el.scrollTop - el.clientHeight < 50 && hasMore) loadMore();
+          }}>
           <div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--font-semibold)', paddingBottom: 'var(--space-2)', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
             本视图告警 ({viewAlerts.length})
           </div>
@@ -133,6 +137,10 @@ export default function LiveMonitor() {
             </div>
             );
           })}
+          {hasMore && (
+            <div style={{ color: 'var(--text-disabled)', textAlign: 'center', padding: 'var(--space-2)', cursor: 'pointer' }}
+              onClick={loadMore}>▼ 加载更多</div>
+          )}
         </div>
 
         <div style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)', border: '1px solid rgba(255,255,255,.06)' }}>

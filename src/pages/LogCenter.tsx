@@ -40,15 +40,24 @@ export default function LogCenter() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [logPage, setLogPage] = useState(1);
+  const [logHasMore, setLogHasMore] = useState(false);
   const reportDates = recentDates(6);
   const weeks = recentWeeks(6);
 
-  const fetchData = async () => {
+  const fetchLogs = async (pageNum = 1, append = false) => {
     setLoading(true);
     setError('');
     try {
-      const data = await client.fetchLogs(1, 50);
-      setLogs(data.items);
+      const data = await client.fetchLogs(pageNum, 20);
+      const items = data.items.sort((a, b) => b.created_at.localeCompare(a.created_at));
+      if (append) {
+        setLogs(prev => [...prev, ...items]);
+      } else {
+        setLogs(items);
+        setLogPage(1);
+      }
+      setLogHasMore(data.items.length === 20);
     } catch (e) {
       setError(e instanceof Error ? e.message : '加载失败');
     } finally {
@@ -56,15 +65,19 @@ export default function LogCenter() {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  const loadMoreLogs = () => {
+    if (!logHasMore || loading) return;
+    const next = logPage + 1;
+    setLogPage(next);
+    fetchLogs(next, true);
+  };
+
+  useEffect(() => { fetchLogs(); }, []);
 
   const SEV_LABELS: Record<number, string> = { 1: 'INFO', 2: 'WARNING', 3: 'CRITICAL', 4: 'EMERGENCY' };
   const SEV_LEVELS: Record<string, string> = { '1': 'neutral', '2': 'warning', '3': 'danger', '4': 'danger' };
 
-  const logEntries = [...logs]
-    .sort((a, b) => b.created_at.localeCompare(a.created_at))
-    .slice(0, 6)
-    .map(l => ({
+  const logEntries = logs.map(l => ({
       time: l.created_at ? l.created_at.slice(11, 16) : '',
       severity: l.severity,
       sevLabel: l.severity ? SEV_LABELS[l.severity] || `L${l.severity}` : '',
@@ -84,7 +97,10 @@ export default function LogCenter() {
 
   return (
     <div style={{ display: 'flex', gap: 'var(--space-4)', height: '100%', padding: 'var(--space-4)' }}>
-      <div style={panelStyle}>
+      <div style={panelStyle} onScroll={(e) => {
+          const el = e.currentTarget;
+          if (el.scrollHeight - el.scrollTop - el.clientHeight < 50) loadMoreLogs();
+        }}>
         <div style={headerStyle}>本日日志</div>
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} style={{ height: 40, marginBottom: 'var(--space-2)' }} />)
@@ -92,7 +108,7 @@ export default function LogCenter() {
           <div style={{ textAlign: 'center', padding: 'var(--space-4)', color: 'var(--color-danger)' }}>
             <AlertTriangle size={24} style={{ marginBottom: 'var(--space-2)' }} />
             <div>{error}</div>
-            <Button variant="secondary" size="sm" style={{ marginTop: 'var(--space-3)' }} onClick={fetchData}>重试</Button>
+            <Button variant="secondary" size="sm" style={{ marginTop: 'var(--space-3)' }} onClick={() => fetchLogs()}>重试</Button>
           </div>
         ) : (
           logEntries.map((e, i) => (
@@ -112,6 +128,10 @@ export default function LogCenter() {
         )}
         {!loading && !error && logEntries.length === 0 && (
           <div style={{ color: 'var(--text-disabled)', textAlign: 'center', padding: 'var(--space-8)' }}>暂无日志</div>
+        )}
+        {logHasMore && (
+          <div style={{ color: 'var(--text-disabled)', textAlign: 'center', padding: 'var(--space-2)', cursor: 'pointer' }}
+            onClick={loadMoreLogs}>▼ 加载更多</div>
         )}
       </div>
 
