@@ -110,7 +110,6 @@ export default function LiveMonitor() {
             <div style={{ color: 'var(--text-disabled)', textAlign: 'center', padding: 'var(--space-8)' }}>当前视图无未处理告警</div>
           )}
           {viewAlerts.map(a => {
-            const excName = a.exception_name || `告警 #${a.id}`;
             const sev = (a.severity || 'WARNING').toUpperCase();
             const badgeLevel = sev === 'EMERGENCY' || sev === 'CRITICAL' ? 'danger'
                              : sev === 'WARNING' ? 'warning' : 'neutral';
@@ -123,7 +122,10 @@ export default function LiveMonitor() {
               padding: 'var(--space-3)', borderRadius: 'var(--radius-sm)', background: 'var(--bg-canvas)',
               borderLeft: `3px solid ${borderColor}` }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-medium)' }}>{excName}</div>
+                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-medium)' }}>
+                  {a.exception_name || `告警 #${a.id}`}
+                  {a.exception_name && <span style={{ color: 'var(--text-disabled)', fontWeight: 'var(--font-normal)', marginLeft: 4 }}>#{a.id}</span>}
+                </div>
                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: 2 }}>{a.timestamp}</div>
               </div>
               <Badge level={badgeLevel}>{sevLabel}</Badge>
