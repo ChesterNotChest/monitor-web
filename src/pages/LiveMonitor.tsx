@@ -144,10 +144,7 @@ export default function LiveMonitor() {
 
         <div style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)', border: '1px solid rgba(255,255,255,.06)' }}>
           <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 'var(--space-3)' }}>操作</div>
-          <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
             <Button variant="secondary" onClick={() => navigate(`/view/${cameraId}/edit`, { state: { from: location.pathname } })}>编辑电子围栏</Button>
-            <Button variant="primary">手动录制</Button>
-          </div>
         </div>
       </div>
     </div>

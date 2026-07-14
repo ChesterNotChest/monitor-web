@@ -267,7 +267,7 @@ export default function EventReplay() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', fontSize: 'var(--text-base)', color: 'var(--text-secondary)' }}>
             <div>发生时间：<span style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{eventDetail.timestamp}</span></div>
             <div>关联视图：<span style={{ color: 'var(--text-primary)', cursor: 'pointer' }} onClick={() => navigate(`/view/${eventDetail.view_id}`, { state: { from: `/replay/${id}` } })}>视图 {eventDetail.view_id}</span></div>
-            <div>异常定义：<Badge level="neutral">#{eventDetail.exception_id}</Badge></div>
+            <div>异常定义：<span style={{ color: 'var(--text-primary)' }}>{eventDetail.exception_name || `#${eventDetail.exception_id}`}</span></div>
             {activeRecording && <div>录制时长：<span style={{ color: 'var(--text-primary)' }}>{activeRecording.start_time} ~ {activeRecording.end_time || '录制中'}</span></div>}
             <div style={{ marginTop: 'var(--space-2)', padding: 'var(--space-3)', background: 'var(--bg-canvas)', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--text-secondary)' }}>处理状态</span>

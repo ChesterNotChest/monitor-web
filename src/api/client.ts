@@ -448,6 +448,17 @@ export async function updateReportSettings(body: ReportSettingsRequest): Promise
   });
 }
 
+export async function fetchRecordingSettings(): Promise<{ max_seconds: number; wind_down_seconds: number }> {
+  return baseFetch('/exceptions/recording-settings/');
+}
+
+export async function updateRecordingSettings(body: { max_seconds?: number; wind_down_seconds?: number }): Promise<{ max_seconds: number; wind_down_seconds: number }> {
+  return baseFetch('/exceptions/recording-settings/', {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+}
+
 // ══════════════════════════════════════════════
 // Views
 // ══════════════════════════════════════════════

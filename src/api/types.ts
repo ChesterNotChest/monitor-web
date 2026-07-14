@@ -415,6 +415,8 @@ export interface EventResponse {
   id: number;
   view_id: number;
   exception_id: number;
+  exception_name?: string | null;
+  severity?: string | null;
   recording_id: number | null;
   timestamp: string;
 }

@@ -18,6 +18,8 @@ export default function ExceptionSettings() {
   const [fenceEventTypes, setFenceEventTypes] = useState<DetectionTypeResponse[]>([]);
   const [faceResults, setFaceResults] = useState<DetectionTypeResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [recMax, setRecMax] = useState(10);
+  const [recWd, setRecWd] = useState(10);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -40,6 +42,12 @@ export default function ExceptionSettings() {
       setExceptions(data);
       setAlertGroups(groups);
       setEntityTypes(entities);
+      // 全局录制设置
+      try {
+        const recSettings = await client.fetchRecordingSettings();
+        setRecMax(recSettings.max_seconds);
+        setRecWd(recSettings.wind_down_seconds);
+      } catch { /* ignore */ }
       setActionTypes(actions);
       setSoundTypes(sounds);
       setFenceEventTypes(fenceTypes);
@@ -56,24 +64,24 @@ export default function ExceptionSettings() {
   const selectedEx = exceptions.find(e => e.id === selected);
 
   // Add form
-  const [addForm, setAddForm] = useState<ExceptionCreate>({ name: '', severity: SeverityLevel.WARNING, group_id: null, entity_ids: [], action_ids: [], sound_ids: [], face_result_id: null, fence_event_id: null, cooldown_seconds: 30, max_recording_seconds: 10, wind_down_seconds: 10});
+  const [addForm, setAddForm] = useState<ExceptionCreate>({ name: '', severity: SeverityLevel.WARNING, group_id: null, entity_ids: [], action_ids: [], sound_ids: [], face_result_id: null, fence_event_id: null, cooldown_seconds: 30});
   const doAdd = async () => {
     if (!addForm.name.trim()) return;
     setActionLoading(true);
     try {
       await client.createException(addForm);
       setShowAdd(false);
-      setAddForm({ name: '', severity: SeverityLevel.WARNING, group_id: null, entity_ids: [], action_ids: [], sound_ids: [], face_result_id: null, fence_event_id: null, cooldown_seconds: 30, max_recording_seconds: 10, wind_down_seconds: 10});
+      setAddForm({ name: '', severity: SeverityLevel.WARNING, group_id: null, entity_ids: [], action_ids: [], sound_ids: [], face_result_id: null, fence_event_id: null, cooldown_seconds: 30});
       await fetchData();
     } catch { /* ignore */ }
     finally { setActionLoading(false); }
   };
 
   // Edit form
-  const [editForm, setEditForm] = useState<ExceptionCreate>({ name: '', severity: SeverityLevel.WARNING, group_id: null, entity_ids: [], action_ids: [], sound_ids: [], face_result_id: null, fence_event_id: null, cooldown_seconds: 30, max_recording_seconds: 10, wind_down_seconds: 10});
+  const [editForm, setEditForm] = useState<ExceptionCreate>({ name: '', severity: SeverityLevel.WARNING, group_id: null, entity_ids: [], action_ids: [], sound_ids: [], face_result_id: null, fence_event_id: null, cooldown_seconds: 30});
   const openEdit = () => {
     if (!selectedEx) return;
-    setEditForm({ name: selectedEx.name, severity: selectedEx.severity, group_id: selectedEx.group_id, entity_ids: selectedEx.entity_ids ?? [], action_ids: selectedEx.action_ids ?? [], sound_ids: selectedEx.sound_ids ?? [], face_result_id: selectedEx.face_result_id, fence_event_id: selectedEx.fence_event_id, cooldown_seconds: selectedEx.cooldown_seconds ?? 30, max_recording_seconds: selectedEx.max_recording_seconds ?? 10, wind_down_seconds: selectedEx.wind_down_seconds ?? 10 });
+    setEditForm({ name: selectedEx.name, severity: selectedEx.severity, group_id: selectedEx.group_id, entity_ids: selectedEx.entity_ids ?? [], action_ids: selectedEx.action_ids ?? [], sound_ids: selectedEx.sound_ids ?? [], face_result_id: selectedEx.face_result_id, fence_event_id: selectedEx.fence_event_id, cooldown_seconds: selectedEx.cooldown_seconds ?? 30 });
     setShowEdit(true);
   };
   const doEdit = async () => {
@@ -110,6 +118,22 @@ export default function ExceptionSettings() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
           <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--font-bold)', color: 'var(--text-primary)' }}>异常设置</h2>
           <Button variant="primary" icon={Plus} onClick={() => setShowAdd(true)} disabled={actionLoading}>添加异常</Button>
+        </div>
+        {/* 全局录制设置 */}
+        <div style={{ background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)', marginBottom: 'var(--space-6)', display: 'flex', alignItems: 'center', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)', color: 'var(--text-primary)' }}>全局录制参数</span>
+          <label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>最长录制(秒)
+            <input type="number" min="5" max="120" value={recMax}
+              style={{ width: 60, marginLeft: 4, padding: '2px 6px', background: 'var(--bg-canvas)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)' }}
+              onChange={e => setRecMax(Number(e.target.value))} /></label>
+          <label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>收尾缓冲(秒)
+            <input type="number" min="5" max="60" value={recWd}
+              style={{ width: 60, marginLeft: 4, padding: '2px 6px', background: 'var(--bg-canvas)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)' }}
+              onChange={e => setRecWd(Number(e.target.value))} /></label>
+          <Button variant="secondary" size="sm" onClick={async () => {
+            try { await client.updateRecordingSettings({ max_seconds: recMax, wind_down_seconds: recWd }); alert('已保存'); }
+            catch { alert('保存失败'); }
+          }}>保存</Button>
         </div>
         {loading ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 'var(--space-4)' }}>
@@ -187,10 +211,6 @@ export default function ExceptionSettings() {
           </select>
           <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>冷却时间（秒）</label>
             <input style={inputStyle} type="number" min="0" value={addForm.cooldown_seconds ?? 30} onChange={e => setAddForm(f => ({ ...f, cooldown_seconds: Number(e.target.value) }))} /></div>
-          <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>录制时间上限（秒，0=不限）</label>
-            <input style={inputStyle} type="number" min="0" value={addForm.max_recording_seconds ?? 10} onChange={e => setAddForm(f => ({ ...f, max_recording_seconds: Number(e.target.value) }))} /></div>
-          <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>空闲等待（秒）</label>
-            <input style={inputStyle} type="number" min="0" value={addForm.wind_down_seconds ?? 10} onChange={e => setAddForm(f => ({ ...f, wind_down_seconds: Number(e.target.value) }))} /></div>
           <Button variant="primary" style={{ width: '100%' }} onClick={doAdd} disabled={actionLoading}>确认添加</Button>
         </Modal>
       )}
@@ -217,10 +237,6 @@ export default function ExceptionSettings() {
           </select>
           <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>冷却时间（秒）</label>
             <input style={inputStyle} type="number" min="0" value={editForm.cooldown_seconds ?? 30} onChange={e => setEditForm(f => ({ ...f, cooldown_seconds: Number(e.target.value) }))} /></div>
-          <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>录制时间上限（秒，0=不限）</label>
-            <input style={inputStyle} type="number" min="0" value={editForm.max_recording_seconds ?? 10} onChange={e => setEditForm(f => ({ ...f, max_recording_seconds: Number(e.target.value) }))} /></div>
-          <div><label style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>空闲等待（秒）</label>
-            <input style={inputStyle} type="number" min="0" value={editForm.wind_down_seconds ?? 10} onChange={e => setEditForm(f => ({ ...f, wind_down_seconds: Number(e.target.value) }))} /></div>
           <Button variant="primary" style={{ width: '100%' }} onClick={doEdit} disabled={actionLoading}>保存修改</Button>
         </Modal>
       )}
@@ -258,8 +274,6 @@ function ExceptionDetail({ selectedEx, alertGroups, entityTypes, actionTypes, so
       {faceName != null && <div>人脸识别结果：<span style={{ color: 'var(--text-primary)' }}>{faceName}</span></div>}
       {fenceName != null && <div>围栏事件类型：<span style={{ color: 'var(--text-primary)' }}>{fenceName}</span></div>}
       <div>冷却时间：<span style={{ color: 'var(--text-primary)' }}>{selectedEx.cooldown_seconds ?? 30} 秒</span></div>
-      <div>录制上限：<span style={{ color: 'var(--text-primary)' }}>{selectedEx.max_recording_seconds ?? 10} 秒</span></div>
-      <div>空闲等待：<span style={{ color: 'var(--text-primary)' }}>{selectedEx.wind_down_seconds ?? 10} 秒</span></div>
       <div>创建时间：<span style={{ color: 'var(--text-primary)', fontSize: 'var(--text-sm)' }}>{selectedEx.created_at}</span></div>
     </div>
   );

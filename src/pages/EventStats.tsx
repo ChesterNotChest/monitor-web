@@ -71,7 +71,7 @@ export default function EventStats() {
             <tbody>
               {stats.map((s, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,.04)' }}>
-                  <td style={{ padding: 'var(--space-2) var(--space-3)', color: 'var(--text-primary)' }}>#{s.exception_id}</td>
+                  <td style={{ padding: 'var(--space-2) var(--space-3)', color: 'var(--text-primary)' }}>{s.exception_name || `#${s.exception_id}`}</td>
                   <td style={{ padding: 'var(--space-2) var(--space-3)' }}>
                     <span style={{
                       display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
