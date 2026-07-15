@@ -19,6 +19,7 @@ const WeeklyReportDetail = lazy(() => import('../pages/WeeklyReportDetail'));
 const DetectionSettings = lazy(() => import('../pages/DetectionSettings'));
 const EventStats = lazy(() => import('../pages/EventStats'));
 const StreamManagement = lazy(() => import('../pages/StreamManagement'));
+const VehicleMonitor = lazy(() => import('../pages/VehicleMonitor'));
 
 function PageFallback() {
   return <div style={{ padding: 'var(--space-6)' }}><Skeleton variant="card" count={3} /></div>;
@@ -55,6 +56,7 @@ const protectedRoutes = [
   { path: '/detection-settings', element: <LazyPage Component={DetectionSettings} /> },
   { path: '/event-stats', element: <LazyPage Component={EventStats} /> },
   { path: '/streams', element: <LazyPage Component={StreamManagement} /> },
+  { path: '/vehicle-monitor', element: <LazyPage Component={VehicleMonitor} /> },
 ];
 
 export const router = createBrowserRouter([

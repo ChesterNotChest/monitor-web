@@ -358,6 +358,13 @@ export interface ViewResponse {
 // Named Person (named_person.py)
 // ══════════════════════════════════════════════
 
+export interface VehicleStatsResponse {
+  view_id: number;
+  total_unique: Record<string, number>;
+  current_frame: Record<string, number>;
+  fps: number;
+}
+
 export interface PersonCreate {
   name: string;
 }

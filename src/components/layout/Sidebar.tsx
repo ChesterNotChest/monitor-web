@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ScrollText, Users, UserSquare, Monitor, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, Zap, LogOut, Key, Tag, FileText, Radio } from 'lucide-react';
+import { LayoutDashboard, ScrollText, Users, UserSquare, Monitor, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, Zap, LogOut, Key, Tag, FileText, Radio, Car } from 'lucide-react';
 import { useAlerts } from '../../context/AlertContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -14,8 +14,9 @@ const baseItems: NavItem[] = [
   { path:'/characters',label:'人物管理',icon:UserSquare,roles:['security_guard','manager','operator'] },
   { path:'/equipment',label:'设备信息',icon:Monitor,roles:['operator'] },
   { path:'/streams',label:'自定义流',icon:Radio,roles:['operator'] },
-  { path:'/exception-settings',label:'异常设置',icon:AlertTriangle,roles:['manager','operator'] },
+  { path:'/exception-settings',label:'异常设置 手打打算',icon:AlertTriangle,roles:['manager','operator'] },
   { path:'/detection-settings',label:'检测类型',icon:Tag,roles:['manager','operator'] },
+  { path:'/vehicle-monitor',label:'车辆监控',icon:Car,roles:['security_guard','manager','operator'] },
   { path:'/event-stats',label:'事件统计',icon:BarChart3,roles:['manager','operator'] },
 ];
 

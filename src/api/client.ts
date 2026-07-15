@@ -483,6 +483,10 @@ export async function deleteView(id: number): Promise<void> {
   await baseFetch<void>(`/views/${id}/`, { method: 'DELETE' });
 }
 
+export async function fetchVehicleStats(viewId: number): Promise<import('./types').VehicleStatsResponse> {
+  return baseFetch<import('./types').VehicleStatsResponse>(`/views/${viewId}/vehicle-stats/`);
+}
+
 // ══════════════════════════════════════════════
 // Persons
 // ══════════════════════════════════════════════
